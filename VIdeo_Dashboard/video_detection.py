@@ -266,6 +266,16 @@ def process_frame(frame: np.ndarray, model: YOLO, detect_objects: bool, detect_p
         })
     return frame, detection_data
 
+def is_opencv_webcam_available():
+    try:
+        cap = cv2.VideoCapture(0)
+        if cap.isOpened():
+            cap.release()
+            return True
+        return False
+    except Exception:
+        return False
+
 def main():
     # Header
     st.markdown("""
@@ -366,82 +376,64 @@ def main():
     
     with col1:
         st.markdown("### 📹 Video Input")
-        
-        # Video source selection
         video_source = st.radio(
             "Select Video Source",
-            ["Webcam (OpenCV)", "Webcam (Browser)", "Upload Video File", "Video URL"],
+            ["Webcam", "Upload Video File", "Video URL"],
             horizontal=True
         )
 
-        if video_source == "Webcam (OpenCV)":
-            # Webcam input
-            if st.button("🎥 Start Webcam Detection", type="primary"):
-                st.session_state.processing = True
-                st.session_state.detection_results = []
-                st.session_state.person_counter = 1
-                st.session_state.person_registry = []
-                st.session_state.age_gender_cache = {}
-                
-                # Webcam processing
-                cap = cv2.VideoCapture(0)
-                if not cap.isOpened():
-                    st.error("Unable to open webcam")
-                    return
-                
-                # Create placeholder for video
-                video_placeholder = st.empty()
-                stats_placeholder = st.empty()
-                # Create stop button ONCE
-                stop = st.button("⏹️ Stop Detection", key="stop_webcam")
-                try:
-                    while st.session_state.processing:
-                        ret, frame = cap.read()
-                        if not ret:
-                            break
-                        
-                        # Process frame
-                        processed_frame, detections = process_frame(
-                            frame, model, detect_objects, detect_persons,
-                            detect_gender, detect_age, gender_net, age_net,
-                            gender_list, age_list, resize_dim
-                        )
-                        
-                        # Debug info
-                        if detect_gender or detect_age:
-                            st.sidebar.markdown(f"**Debug:** Models loaded - Gender: {gender_net is not None}, Age: {age_net is not None}")
+        if video_source == "Webcam":
+            if is_opencv_webcam_available():
+                st.success("Using local webcam (OpenCV).")
+                if st.button("🎥 Start Webcam Detection", type="primary"):
+                    st.session_state.processing = True
+                    st.session_state.detection_results = []
+                    st.session_state.person_counter = 1
+                    st.session_state.person_registry = []
+                    st.session_state.age_gender_cache = {}
+                    cap = cv2.VideoCapture(0)
+                    if not cap.isOpened():
+                        st.error("Unable to open webcam")
+                        return
+                    video_placeholder = st.empty()
+                    stats_placeholder = st.empty()
+                    stop = st.button("⏹️ Stop Detection", key="stop_webcam")
+                    try:
+                        while st.session_state.processing:
+                            ret, frame = cap.read()
+                            if not ret:
+                                break
+                            processed_frame, detections = process_frame(
+                                frame, model, detect_objects, detect_persons,
+                                detect_gender, detect_age, gender_net, age_net,
+                                gender_list, age_list, resize_dim
+                            )
+                            if detect_gender or detect_age:
+                                st.sidebar.markdown(f"**Debug:** Models loaded - Gender: {gender_net is not None}, Age: {age_net is not None}")
+                                if detections:
+                                    for det in detections:
+                                        if 'person' in det['class']:
+                                            st.sidebar.markdown(f"**Person:** {det['gender']} | {det['age']}")
                             if detections:
-                                for det in detections:
-                                    if 'person' in det['class']:
-                                        st.sidebar.markdown(f"**Person:** {det['gender']} | {det['age']}")
-
-                        # Update detection results
-                        if detections:
-                            st.session_state.detection_results.extend(detections)
-                        
-                        # Convert frame to RGB for display
-                        frame_rgb = cv2.cvtColor(processed_frame, cv2.COLOR_BGR2RGB)
-                        video_placeholder.image(frame_rgb, channels="RGB")
-                        
-                        # Display stats
-                        with stats_placeholder.container():
-                            col1, col2, col3 = st.columns(3)
-                            with col1:
-                                st.metric("Total Detections", len(st.session_state.detection_results))
-                            with col2:
-                                st.metric("People Detected", len([d for d in st.session_state.detection_results if 'person' in d['class']]))
-                            with col3:
-                                st.metric("Person Counter", st.session_state.person_counter - 1)
-                        time.sleep(0.1)
-                        if stop:
-                            st.session_state.processing = False
-                            break
-                finally:
-                    cap.release()
-        elif video_source == "Webcam (Browser)":
-            if not STREAMLIT_WEBRTC_AVAILABLE:
-                st.warning("streamlit-webrtc is not installed. Run 'pip install streamlit-webrtc' to enable browser webcam support.")
-            else:
+                                st.session_state.detection_results.extend(detections)
+                            frame_rgb = cv2.cvtColor(processed_frame, cv2.COLOR_BGR2RGB)
+                            video_placeholder.image(frame_rgb, channels="RGB")
+                            with stats_placeholder.container():
+                                col1, col2, col3 = st.columns(3)
+                                with col1:
+                                    st.metric("Total Detections", len(st.session_state.detection_results))
+                                with col2:
+                                    st.metric("People Detected", len([d for d in st.session_state.detection_results if 'person' in d['class']]))
+                                with col3:
+                                    st.metric("Person Counter", st.session_state.person_counter - 1)
+                            time.sleep(0.1)
+                            if stop:
+                                st.session_state.processing = False
+                                break
+                    finally:
+                        cap.release()
+            elif STREAMLIT_WEBRTC_AVAILABLE:
+                st.info("Using browser webcam (streamlit-webrtc). Allow browser webcam access and start detection below.")
                 class VideoProcessor(VideoTransformerBase):
                     def __init__(self):
                         self.model = model
@@ -461,13 +453,13 @@ def main():
                             self.detect_gender, self.detect_age, self.gender_net, self.age_net,
                             self.gender_list, self.age_list, self.resize_dim
                         )
-                        # Optionally update session state with detections
                         if detections:
                             if 'detection_results' in st.session_state:
                                 st.session_state.detection_results.extend(detections)
                         return av.VideoFrame.from_ndarray(processed_frame, format="bgr24")
-                st.info("Allow browser webcam access and start detection below.")
                 webrtc_streamer(key="yolo-browser-webcam", video_processor_factory=VideoProcessor)
+            else:
+                st.warning("No webcam method available. Please install streamlit-webrtc for browser webcam support.")
         elif video_source == "Upload Video File":
             uploaded_file = st.file_uploader(
                 "Choose a video file",
