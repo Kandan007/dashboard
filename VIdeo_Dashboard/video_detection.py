@@ -6,6 +6,7 @@ from ultralytics import YOLO
 import tempfile
 import os
 import time
+import requests
 
 
 st.set_page_config(
@@ -57,6 +58,33 @@ if 'person_registry' not in st.session_state:
     st.session_state.person_registry = []
 if 'age_gender_cache' not in st.session_state:
     st.session_state.age_gender_cache = {}
+
+CAFFE_MODELS = {
+    "deploy_gender.prototxt": "https://github.com/raunaqness/Gender-and-Age-Detection-OpenCV-Caffe/raw/master/data/deploy_gender.prototxt",
+    "gender_net.caffemodel": "https://github.com/raunaqness/Gender-and-Age-Detection-OpenCV-Caffe/raw/master/data/gender_net.caffemodel",
+    "deploy_age.prototxt": "https://github.com/raunaqness/Gender-and-Age-Detection-OpenCV-Caffe/raw/master/data/deploy_age.prototxt",
+    "age_net.caffemodel": "https://github.com/raunaqness/Gender-and-Age-Detection-OpenCV-Caffe/raw/master/data/age_net.caffemodel",
+}
+
+def download_file(url, dest_path):
+    response = requests.get(url, stream=True)
+    response.raise_for_status()
+    with open(dest_path, 'wb') as f:
+        for chunk in response.iter_content(chunk_size=8192):
+            f.write(chunk)
+
+models_dir = os.path.join(os.path.dirname(__file__), "caffe_models")
+os.makedirs(models_dir, exist_ok=True)
+
+for filename, url in CAFFE_MODELS.items():
+    dest_path = os.path.join(models_dir, filename)
+    if not os.path.exists(dest_path):
+        with st.spinner(f"Downloading {filename}..."):
+            try:
+                download_file(url, dest_path)
+                st.success(f"Downloaded {filename}")
+            except Exception as e:
+                st.warning(f"Failed to download {filename}: {e}")
 
 @st.cache_resource
 def load_yolo_model(model_path: str):
@@ -527,14 +555,6 @@ def main():
                 st.rerun()
         else:
             st.info("No detections yet. Start processing a video to see results here.")
-    
-    # # Footer
-    # st.markdown("---")
-    # st.markdown("""
-    # <div style="text-align: center; color: #666;">
-    #     <p>🎥 Video Detection Dashboard | Powered by YOLOv8 and Streamlit</p>
-    # </div>
-    # """, unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main() 
