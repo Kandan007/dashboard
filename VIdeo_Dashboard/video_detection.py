@@ -8,6 +8,13 @@ import os
 import time
 import requests
 
+try:
+    from streamlit_webrtc import webrtc_streamer, VideoTransformerBase
+    import av
+    STREAMLIT_WEBRTC_AVAILABLE = True
+except ImportError:
+    STREAMLIT_WEBRTC_AVAILABLE = False
+
 
 st.set_page_config(
     page_title="Video Detection Dashboard",
@@ -363,11 +370,11 @@ def main():
         # Video source selection
         video_source = st.radio(
             "Select Video Source",
-            ["Webcam", "Upload Video File", "Video URL"],
+            ["Webcam (OpenCV)", "Webcam (Browser)", "Upload Video File", "Video URL"],
             horizontal=True
         )
-        
-        if video_source == "Webcam":
+
+        if video_source == "Webcam (OpenCV)":
             # Webcam input
             if st.button("🎥 Start Webcam Detection", type="primary"):
                 st.session_state.processing = True
@@ -431,7 +438,36 @@ def main():
                             break
                 finally:
                     cap.release()
-        
+        elif video_source == "Webcam (Browser)":
+            if not STREAMLIT_WEBRTC_AVAILABLE:
+                st.warning("streamlit-webrtc is not installed. Run 'pip install streamlit-webrtc' to enable browser webcam support.")
+            else:
+                class VideoProcessor(VideoTransformerBase):
+                    def __init__(self):
+                        self.model = model
+                        self.detect_objects = detect_objects
+                        self.detect_persons = detect_persons
+                        self.detect_gender = detect_gender
+                        self.detect_age = detect_age
+                        self.gender_net = gender_net
+                        self.age_net = age_net
+                        self.gender_list = gender_list
+                        self.age_list = age_list
+                        self.resize_dim = resize_dim
+                    def transform(self, frame):
+                        img = frame.to_ndarray(format="bgr24")
+                        processed_frame, detections = process_frame(
+                            img, self.model, self.detect_objects, self.detect_persons,
+                            self.detect_gender, self.detect_age, self.gender_net, self.age_net,
+                            self.gender_list, self.age_list, self.resize_dim
+                        )
+                        # Optionally update session state with detections
+                        if detections:
+                            if 'detection_results' in st.session_state:
+                                st.session_state.detection_results.extend(detections)
+                        return av.VideoFrame.from_ndarray(processed_frame, format="bgr24")
+                st.info("Allow browser webcam access and start detection below.")
+                webrtc_streamer(key="yolo-browser-webcam", video_processor_factory=VideoProcessor)
         elif video_source == "Upload Video File":
             uploaded_file = st.file_uploader(
                 "Choose a video file",
@@ -492,11 +528,9 @@ def main():
                         
                         cap.release()
                         status_text.text("Processing complete!")
-                        
                     finally:
                         # Clean up temporary file
                         os.unlink(video_path)
-        
         else:  # Video URL
             video_url = st.text_input("Enter Video URL", placeholder="https://example.com/video.mp4")
             if video_url:
