@@ -59,30 +59,71 @@ if 'person_registry' not in st.session_state:
 if 'age_gender_cache' not in st.session_state:
     st.session_state.age_gender_cache = {}
 
-CAFFE_MODELS = {
-    "deploy_gender.prototxt": "https://github.com/raunaqness/Gender-and-Age-Detection-OpenCV-Caffe/raw/master/data/deploy_gender.prototxt",
-    "gender_net.caffemodel": "https://github.com/raunaqness/Gender-and-Age-Detection-OpenCV-Caffe/raw/master/data/gender_net.caffemodel",
-    "deploy_age.prototxt": "https://github.com/raunaqness/Gender-and-Age-Detection-OpenCV-Caffe/raw/master/data/deploy_age.prototxt",
-    "age_net.caffemodel": "https://github.com/raunaqness/Gender-and-Age-Detection-OpenCV-Caffe/raw/master/data/age_net.caffemodel",
-}
+def process_github_url(url):
+    """Process GitHub URLs to download files, similar to today4.py approach"""
+    if "github.com" in url:
+        try:
+            # Handle raw file URL (e.g., https://raw.githubusercontent.com/username/repo/main/file)
+            if "raw.githubusercontent.com" in url:
+                response = requests.get(url)
+                if response.status_code == 200:
+                    return response.content
+                else:
+                    st.error(f"Failed to download file. Status code: {response.status_code}, URL: {url}")
+                    return None
+            # Handle blob URL (e.g., https://github.com/username/repo/blob/main/file)
+            elif "/blob/" in url:
+                raw_url = url.replace("/blob/", "/raw/")
+                response = requests.get(raw_url)
+                if response.status_code == 200:
+                    return response.content
+                else:
+                    st.error(f"Failed to download file. Status code: {response.status_code}, URL: {raw_url}")
+                    return None
+            # Handle direct file URL (e.g., https://github.com/username/repo/filename)
+            elif len(url.split("/")) > 4 and url.split("/")[4] not in ["tree", "blob", "raw"]:
+                base_parts = url.split("/")
+                repo = f"{base_parts[3]}/{base_parts[4]}"
+                file_path = "/".join(base_parts[5:])
+                raw_url = f"https://raw.githubusercontent.com/{repo}/main/{file_path}"
+                response = requests.get(raw_url)
+                if response.status_code == 200:
+                    return response.content
+                else:
+                    st.error(f"Failed to download file. Status code: {response.status_code}, URL: {raw_url}")
+                    return None
+            else:
+                st.warning("Unsupported GitHub URL format. Please use a raw/blob file URL.")
+                return None
+        except Exception as e:
+            st.error(f"Error processing URL: {str(e)}")
+            return None
+    return None
 
-def download_file(url, dest_path):
-    response = requests.get(url, stream=True)
-    response.raise_for_status()
-    with open(dest_path, 'wb') as f:
-        for chunk in response.iter_content(chunk_size=8192):
-            f.write(chunk)
+# Caffe model URLs - can be any GitHub format
+CAFFE_MODELS = {
+    "deploy_gender.prototxt": "https://github.com/raunaqness/Gender-and-Age-Detection-OpenCV-Caffe/blob/master/data/deploy_gender.prototxt",
+    "gender_net.caffemodel": "https://github.com/raunaqness/Gender-and-Age-Detection-OpenCV-Caffe/blob/master/data/gender_net.caffemodel",
+    "deploy_age.prototxt": "https://github.com/raunaqness/Gender-and-Age-Detection-OpenCV-Caffe/blob/master/data/deploy_age.prototxt",
+    "age_net.caffemodel": "https://github.com/raunaqness/Gender-and-Age-Detection-OpenCV-Caffe/blob/master/data/age_net.caffemodel",
+}
 
 models_dir = os.path.join(os.path.dirname(__file__), "caffe_models")
 os.makedirs(models_dir, exist_ok=True)
 
+# Download missing models using GitHub URL processing
 for filename, url in CAFFE_MODELS.items():
     dest_path = os.path.join(models_dir, filename)
     if not os.path.exists(dest_path):
-        with st.spinner(f"Downloading {filename}..."):
+        with st.spinner(f"Downloading {filename} from GitHub..."):
             try:
-                download_file(url, dest_path)
-                st.success(f"Downloaded {filename}")
+                content = process_github_url(url)
+                if content:
+                    with open(dest_path, 'wb') as f:
+                        f.write(content)
+                    st.success(f"Downloaded {filename}")
+                else:
+                    st.warning(f"Failed to download {filename}: Could not retrieve content from GitHub")
             except Exception as e:
                 st.warning(f"Failed to download {filename}: {e}")
 
