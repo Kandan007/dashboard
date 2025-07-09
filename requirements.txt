@@ -12,3 +12,6 @@ openpyxl
 psutil
 opencv-python-headless
 ultralytics
+streamlit-webrtc
+av
+requests
