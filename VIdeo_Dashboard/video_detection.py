@@ -345,7 +345,7 @@ def main():
                         
                         # Convert frame to RGB for display
                         frame_rgb = cv2.cvtColor(processed_frame, cv2.COLOR_BGR2RGB)
-                        video_placeholder.image(frame_rgb, channels="RGB", use_column_width=True)
+                        video_placeholder.image(frame_rgb, channels="RGB")
                         
                         # Display stats
                         with stats_placeholder.container():
@@ -419,7 +419,7 @@ def main():
                                     st.session_state.detection_results.extend(detections)
                                 # Show sample frame
                                 frame_rgb = cv2.cvtColor(processed_frame, cv2.COLOR_BGR2RGB)
-                                video_placeholder.image(frame_rgb, channels="RGB", use_column_width=True)
+                                video_placeholder.image(frame_rgb, channels="RGB")
                         
                         cap.release()
                         status_text.text("Processing complete!")
@@ -462,7 +462,7 @@ def main():
                             if detections:
                                 st.session_state.detection_results.extend(detections)
                             frame_rgb = cv2.cvtColor(processed_frame, cv2.COLOR_BGR2RGB)
-                            video_placeholder.image(frame_rgb, channels="RGB", use_column_width=True)
+                            video_placeholder.image(frame_rgb, channels="RGB")
                             with stats_placeholder.container():
                                 col1, col2, col3 = st.columns(3)
                                 with col1:
