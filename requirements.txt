@@ -3,15 +3,5 @@ pandas
 numpy
 plotly
 scikit-learn
-pyulog
 matplotlib
-seaborn
 scipy
-watchdog
-openpyxl
-psutil
-opencv-python-headless
-ultralytics
-streamlit-webrtc
-av
-requests
