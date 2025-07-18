@@ -41,7 +41,7 @@ st.markdown("<hr style='margin-top:0;margin-bottom:0;'>", unsafe_allow_html=True
 left, right = st.columns([1.1, 2])
 
 with left:
-    # Gauges
+    # Gauges (as placeholder circles)
     gauge_cols = st.columns(4)
     for i, label in enumerate(["Voltage ()", "Current ()", "Thrust ()", "Temperature()"]):
         with gauge_cols[i]:
@@ -84,7 +84,7 @@ with left:
     """, unsafe_allow_html=True)
 
 with right:
-    # Test Modes Row
+    # Test Modes Row (heading and icons in one row, no labels under icons)
     test_modes = [
         ("Calibration Test", "🛠️"),
         ("Free Control Test", "📊"),
@@ -244,8 +244,17 @@ with right:
     </script>
     """, unsafe_allow_html=True)
 
+    # --- Initialize popup session state keys ---
+    popup_keys = [
+        'show_cal_popup', 'show_free_control_popup', 'show_standard_popup',
+        'show_custom_step_popup', 'show_performance_popup', 'show_shared_test_popup'
+    ]
+    for key in popup_keys:
+        if key not in st.session_state:
+            st.session_state[key] = False
+
     # --- Calibration popup ---
-    if st.session_state['show_cal_popup']:
+    if st.session_state.get('show_cal_popup', False):
         st.markdown("<div class='cal-popup' style='text-align:left; margin-left:40px; max-width:350px;'>", unsafe_allow_html=True)
         st.markdown("""
             <div style='margin-bottom:10px;'><b>Remove Propeller for this procedure!</b></div>
@@ -284,7 +293,7 @@ with right:
             st.markdown("<div class='cal-btn' style='pointer-events:none;'>ESC calibrated successfully!!</div>", unsafe_allow_html=True)
 
     # --- Free Control Test popup ---
-    if st.session_state['show_free_control_popup']:
+    if st.session_state.get('show_free_control_popup', False):
         st.markdown(popup_css, unsafe_allow_html=True)
         st.markdown("<div class='cal-popup' style='text-align:center;'>", unsafe_allow_html=True)
         st.markdown('''
@@ -325,10 +334,12 @@ with right:
             st.markdown("<div style='text-align:center;margin-top:8px;'>Time step (in sec) :</div>", unsafe_allow_html=True)
         with col6:
             st.text_input("", key="free_time_step", label_visibility="collapsed")
+        
+        # Centered Start button
         st.markdown("<div style='text-align:center;margin-top:10px;'><button class='free-btn'>Start</button></div>", unsafe_allow_html=True)
 
     # --- Standard Test popup ---
-    if st.session_state['show_standard_popup']:
+    if st.session_state.get('show_standard_popup', False):
         st.markdown(popup_css, unsafe_allow_html=True)
         st.markdown("<div class='cal-popup' style='text-align:center;'>", unsafe_allow_html=True)
         st.markdown('''
@@ -364,12 +375,15 @@ with right:
             .standard-btn:active { opacity: 0.9; }
             </style>
         ''', unsafe_allow_html=True)
+        
+        # Initialize selected numbers
         if 'selected_numbers' not in st.session_state:
             st.session_state['selected_numbers'] = []
         
         # Number grid
         numbers = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
         
+        # Row 1: 10, 20, 30, 40
         row1_cols = st.columns(4)
         for i, num in enumerate([10, 20, 30, 40]):
             with row1_cols[i]:
@@ -379,6 +393,7 @@ with right:
                     else:
                         st.session_state['selected_numbers'].append(num)
         
+        # Row 2: 50, 60, 70, 80
         row2_cols = st.columns(4)
         for i, num in enumerate([50, 60, 70, 80]):
             with row2_cols[i]:
@@ -388,6 +403,7 @@ with right:
                     else:
                         st.session_state['selected_numbers'].append(num)
         
+        # Row 3: 90, 100 (centered)
         st.markdown("<div style='text-align:center;'>", unsafe_allow_html=True)
         col90, col100 = st.columns(2)
         with col90:
@@ -402,10 +418,12 @@ with right:
                     st.session_state['selected_numbers'].remove(100)
                 else:
                     st.session_state['selected_numbers'].append(100)
+        
+        # Start button
         st.markdown("<div style='text-align:center;margin-top:15px;'><button class='standard-btn'>Start</button></div>", unsafe_allow_html=True)
 
     # --- Custom Step Test popup ---
-    if st.session_state['show_custom_step_popup']:
+    if st.session_state.get('show_custom_step_popup', False):
         st.markdown(popup_css, unsafe_allow_html=True)
         st.markdown("<div class='cal-popup' style='text-align:center;min-width:400px;max-width:500px;'>", unsafe_allow_html=True)
         st.markdown('''
@@ -524,7 +542,7 @@ with right:
         st.markdown("<div style='text-align:center;margin-top:10px;'><button class='custom-btn'>Start</button></div>", unsafe_allow_html=True)
 
     # --- Performance Test popup ---
-    if st.session_state['show_performance_popup']:
+    if st.session_state.get('show_performance_popup', False):
         st.markdown(popup_css, unsafe_allow_html=True)
         st.markdown("<div class='cal-popup' style='text-align:center;min-width:350px;max-width:420px;'>", unsafe_allow_html=True)
         st.markdown('''
@@ -601,7 +619,7 @@ with right:
 
 
     # --- Shared Test popup ---
-    if st.session_state['show_shared_test_popup']:
+    if st.session_state.get('show_shared_test_popup', False):
         st.markdown(popup_css, unsafe_allow_html=True)
         st.markdown("<div class='cal-popup' style='text-align:center;min-width:400px;max-width:500px;'>", unsafe_allow_html=True)
         st.markdown('''
