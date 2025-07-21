@@ -139,26 +139,29 @@ with right:
     .cal-btn:active { opacity: 0.9; }
     </style>
     '''
-    # Render icons in a row, with the first five icons as styled buttons
-    icon_cols = st.columns([0.7] + [0.45]*len(test_modes) + [2.45])
-    icon_cols[0].markdown("<span style='font-weight:bold;font-size:13px;'>Test modes:</span>", unsafe_allow_html=True)
+    # Inject custom CSS for icon buttons (ensure this is before rendering the buttons)
     cal_btn_css = """
     <style>
     div[data-testid='stButton'] button.cal-ico-btn {
-        background: none;
-        border: none;
-        box-shadow: none;
-        padding: 0;
-        margin: 0 auto;
-        font-size: 28px;
+        background: none !important;
+        border: none !important;
+        box-shadow: none !important;
+        outline: none !important;
+        padding: 0 !important;
+        margin: 0 auto !important;
+        font-size: 28px !important;
         cursor: pointer;
-        color: inherit;
-        height: auto;
-        width: auto;
-        line-height: 1;
+        color: inherit !important;
+        height: auto !important;
+        width: auto !important;
+        line-height: 1 !important;
     }
     </style>
     """
+    st.markdown(cal_btn_css, unsafe_allow_html=True)
+    # Render icons in a row, with the first five icons as styled buttons
+    icon_cols = st.columns([0.7] + [0.45]*len(test_modes) + [2.45])
+    icon_cols[0].markdown("<span style='font-weight:bold;font-size:13px;'>Test modes:</span>", unsafe_allow_html=True)
     if icon_cols[1].button("🛠️", key="calibration_icon_btn", help="Calibration Test", use_container_width=True, type="secondary"):
         st.session_state['show_cal_popup'] = not st.session_state.get('show_cal_popup', False)
         st.session_state['calibrated_done'] = False
@@ -255,50 +258,22 @@ with right:
 
     # --- Calibration popup ---
     if st.session_state.get('show_cal_popup', False):
-        st.markdown("<div class='cal-popup' style='text-align:left; margin-left:40px; max-width:350px;'>", unsafe_allow_html=True)
-        st.markdown("""
-            <div style='margin-bottom:10px;'><b>Remove Propeller for this procedure!</b></div>
-            <div style='margin-bottom:12px;'>
-                After pushing the button,<br>
-                - Disconnect battery<br>
-                - Wait 10 secs, connect battery<br>
-                - ESCs should beep as they are calibrated<br>
-                - Disconnect device
-            </div>
-        """, unsafe_allow_html=True)
-        st.markdown('''
-        <style>
-        .cal-btn {
-            background: #3dc3cb;
-            color: #fff;
-            border: none;
-            border-radius: 3px;
-            padding: 7px 0;
-            width: 70%;
-            font-size: 15px;
-            margin: 14px auto 0 0;
-            display: block;
-            cursor: pointer;
-            text-align: center;
-        }
-        .cal-btn:active { opacity: 0.9; }
-        </style>
-        ''', unsafe_allow_html=True)
-        if 'calibrated_done' not in st.session_state:
-            st.session_state['calibrated_done'] = False
-        if not st.session_state['calibrated_done']:
-            if st.button("Calibrate ESC", key="cal_btn_popup"):
-                st.session_state['calibrated_done'] = True
-        else:
-            st.markdown("<div class='cal-btn' style='pointer-events:none;'>ESC calibrated successfully!!</div>", unsafe_allow_html=True)
-
-    # --- Free Control Test popup ---
-    if st.session_state.get('show_free_control_popup', False):
-        st.markdown(popup_css, unsafe_allow_html=True)
-        st.markdown("<div class='cal-popup' style='text-align:center;'>", unsafe_allow_html=True)
-        st.markdown('''
+        col_left, col_center, col_right = st.columns([1, 2, 1])
+        with col_center:
+            st.markdown("<div class='cal-popup' style='text-align:center; max-width:350px;'>", unsafe_allow_html=True)
+            st.markdown("""
+                <div style='margin-bottom:10px;'><b>Remove Propeller for this procedure!</b></div>
+                <div style='margin-bottom:12px;'>
+                    After pushing the button,<br>
+                    - Disconnect battery<br>
+                    - Wait 10 secs, connect battery<br>
+                    - ESCs should beep as they are calibrated<br>
+                    - Disconnect device
+                </div>
+            """, unsafe_allow_html=True)
+            st.markdown('''
             <style>
-            .free-btn {
+            .cal-btn {
                 background: #3dc3cb;
                 color: #fff;
                 border: none;
@@ -306,37 +281,66 @@ with right:
                 padding: 7px 0;
                 width: 70%;
                 font-size: 15px;
-                margin: 14px auto 0 auto;
+                margin: 14px auto 0 0;
                 display: block;
                 cursor: pointer;
                 text-align: center;
             }
-            .free-btn:active { opacity: 0.9; }
+            .cal-btn:active { opacity: 0.9; }
             </style>
-        ''', unsafe_allow_html=True)
-        # Row 1: Initial Throttle %
-        col1, col2 = st.columns([.8, 1], gap="small")
-        with col1:
-            st.markdown("<div style='text-align:center;margin-top:8px;'>Initial Throttle % :</div>", unsafe_allow_html=True)
-        with col2:
-            st.text_input("", key="free_throttle", label_visibility="collapsed")
-        
-        # Row 2: Initial PWM value
-        col3, col4 = st.columns([.8, 1], gap="small")
-        with col3:
-            st.markdown("<div style='text-align:center;margin-top:8px;'>Initial PWM value:</div>", unsafe_allow_html=True)
-        with col4:
-            st.text_input("", key="free_pwm", label_visibility="collapsed")
-        
-        # Row 3: Time step
-        col5, col6 = st.columns([.8, 1], gap="small")
-        with col5:
-            st.markdown("<div style='text-align:center;margin-top:8px;'>Time step (in sec) :</div>", unsafe_allow_html=True)
-        with col6:
-            st.text_input("", key="free_time_step", label_visibility="collapsed")
-        
-        # Centered Start button
-        st.markdown("<div style='text-align:center;margin-top:10px;'><button class='free-btn'>Start</button></div>", unsafe_allow_html=True)
+            ''', unsafe_allow_html=True)
+            if 'calibrated_done' not in st.session_state:
+                st.session_state['calibrated_done'] = False
+            if not st.session_state['calibrated_done']:
+                if st.button("Calibrate ESC", key="cal_btn_popup"):
+                    st.session_state['calibrated_done'] = True
+            else:
+                st.markdown("<div class='cal-btn' style='pointer-events:none;'>ESC calibrated successfully!!</div>", unsafe_allow_html=True)
+
+    # --- Free Control Test popup ---
+    if st.session_state.get('show_free_control_popup', False):
+        col_left, col_center, col_right = st.columns([1, 2, 1])
+        with col_center:
+            st.markdown(popup_css, unsafe_allow_html=True)
+            st.markdown("<div class='cal-popup' style='text-align:center;'>", unsafe_allow_html=True)
+            st.markdown('''
+                <style>
+                .free-btn {
+                    background: #3dc3cb;
+                    color: #fff;
+                    border: none;
+                    border-radius: 3px;
+                    padding: 7px 0;
+                    width: 70%;
+                    font-size: 15px;
+                    margin: 14px auto 0 auto;
+                    display: block;
+                    cursor: pointer;
+                    text-align: center;
+                }
+                .free-btn:active { opacity: 0.9; }
+                </style>
+            ''', unsafe_allow_html=True)
+            # Row 1: Initial Throttle %
+            col1, col2 = st.columns([.8, 1], gap="small")
+            with col1:
+                st.markdown("<div style='text-align:center;margin-top:8px;'>Initial Throttle % :</div>", unsafe_allow_html=True)
+            with col2:
+                st.text_input("", key="free_throttle", label_visibility="collapsed")
+            # Row 2: Initial PWM value
+            col3, col4 = st.columns([.8, 1], gap="small")
+            with col3:
+                st.markdown("<div style='text-align:center;margin-top:8px;'>Initial PWM value:</div>", unsafe_allow_html=True)
+            with col4:
+                st.text_input("", key="free_pwm", label_visibility="collapsed")
+            # Row 3: Time step
+            col5, col6 = st.columns([.8, 1], gap="small")
+            with col5:
+                st.markdown("<div style='text-align:center;margin-top:8px;'>Time step (in sec) :</div>", unsafe_allow_html=True)
+            with col6:
+                st.text_input("", key="free_time_step", label_visibility="collapsed")
+            # Centered Start button
+            st.markdown("<div style='text-align:center;margin-top:10px;'><button class='free-btn'>Start</button></div>", unsafe_allow_html=True)
 
     # --- Standard Test popup ---
     if st.session_state.get('show_standard_popup', False):
