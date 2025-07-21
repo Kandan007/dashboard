@@ -564,7 +564,7 @@ with right:
             </style>
         ''', unsafe_allow_html=True)
         # Header row: Throttle sequence with Repeat Sequence checkbox and times input in one row
-        perf_col1, perf_col2, perf_col3, perf_col4 = st.columns([2, 1, 1, 0.5])
+        perf_col1, perf_col2, perf_col3, perf_col4 = st.columns([2, 1, 0.5, 1.5])
         with perf_col1:
             st.markdown("<div style='text-align:left;font-weight:bold;font-size:16px;margin-bottom:5px;'>Throttle sequence</div>", unsafe_allow_html=True)
         with perf_col2:
@@ -572,7 +572,7 @@ with right:
         with perf_col3:
             st.number_input("", min_value=1, value=5, key="perf_repeat_times_input", label_visibility="collapsed")
         with perf_col4:
-            st.markdown("<div style='font-size:12px;margin-top:8px;'>times</div>", unsafe_allow_html=True)
+            st.markdown("<div style='text-align:left;font-size:12px;margin-top:8px;'>times</div>", unsafe_allow_html=True)
         # Input and radio row
         input_col1, input_col2 = st.columns([1.2, 1])
         with input_col1:
