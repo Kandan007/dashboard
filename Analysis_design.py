@@ -140,8 +140,8 @@ with right:
     </style>
     '''
     # Render icons in a row, with the first five icons as styled buttons
-    icon_cols = st.columns(len(test_modes) + 1)
-    icon_cols[0].markdown("<span style='font-weight:bold;font-size:15px;'>Test modes:</span>", unsafe_allow_html=True)
+    icon_cols = st.columns([0.7] + [0.45]*len(test_modes) + [2.45])
+    icon_cols[0].markdown("<span style='font-weight:bold;font-size:13px;'>Test modes:</span>", unsafe_allow_html=True)
     cal_btn_css = """
     <style>
     div[data-testid='stButton'] button.cal-ico-btn {
