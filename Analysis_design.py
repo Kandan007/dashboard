@@ -665,7 +665,7 @@ with right:
         if benchmark_source != "Select source...":
             benchmark_files = ['file1.csv', 'file2.csv', 'file3.csv']
             benchmark_file = st.selectbox("Select file:", benchmark_files, key="benchmark_file")
-        st.markdown("<div style='text-align:center;margin-top:15px;'><button class='shared-btn'>Start</button></div>", unsafe_allow_html=True)
+        st.markdown("<div style='text-align:center;margin-top:0px;'><button class='shared-btn'>Start</button></div>", unsafe_allow_html=True)
 
     plot_labels = [
         ("Voltage", "Current"),
