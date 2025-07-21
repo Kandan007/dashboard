@@ -344,87 +344,83 @@ with right:
 
     # --- Standard Test popup ---
     if st.session_state.get('show_standard_popup', False):
-        st.markdown(popup_css, unsafe_allow_html=True)
-        st.markdown("<div class='cal-popup' style='text-align:center;'>", unsafe_allow_html=True)
-        st.markdown('''
-            <style>
-            .num-btn {
-                background: white;
-                color: black;
-                border: 1px solid #b2e0e6;
-                border-radius: 3px;
-                padding: 8px 12px;
-                margin: 2px;
-                font-size: 14px;
-                cursor: pointer;
-                display: inline-block;
-                min-width: 40px;
-                text-align: center;
-            }
-            .num-btn:hover { background: #f0f8ff; }
-            .num-btn.selected { background: #3dc3cb; color: white; border-color: #3dc3cb; }
-            .standard-btn {
-                background: #3dc3cb;
-                color: #fff;
-                border: none;
-                border-radius: 3px;
-                padding: 7px 0;
-                width: 70%;
-                font-size: 15px;
-                margin: 14px auto 0 auto;
-                display: block;
-                cursor: pointer;
-                text-align: center;
-            }
-            .standard-btn:active { opacity: 0.9; }
-            </style>
-        ''', unsafe_allow_html=True)
-        
-        # Initialize selected numbers
-        if 'selected_numbers' not in st.session_state:
-            st.session_state['selected_numbers'] = []
-        
-        # Number grid
-        numbers = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
-        
-        # Row 1: 10, 20, 30, 40
-        row1_cols = st.columns(4)
-        for i, num in enumerate([10, 20, 30, 40]):
-            with row1_cols[i]:
-                if st.button(str(num), key=f"num_{num}_row1", use_container_width=True):
-                    if num in st.session_state['selected_numbers']:
-                        st.session_state['selected_numbers'].remove(num)
+        col_left, col_center, col_right = st.columns([1, 2, 1])
+        with col_center:
+            st.markdown(popup_css, unsafe_allow_html=True)
+            st.markdown("<div class='cal-popup' style='text-align:center;'>", unsafe_allow_html=True)
+            st.markdown('''
+                <style>
+                .num-btn {
+                    background: white;
+                    color: black;
+                    border: 1px solid #b2e0e6;
+                    border-radius: 3px;
+                    padding: 8px 12px;
+                    margin: 2px;
+                    font-size: 14px;
+                    cursor: pointer;
+                    display: inline-block;
+                    min-width: 40px;
+                    text-align: center;
+                }
+                .num-btn:hover { background: #f0f8ff; }
+                .num-btn.selected { background: #3dc3cb; color: white; border-color: #3dc3cb; }
+                .standard-btn {
+                    background: #3dc3cb;
+                    color: #fff;
+                    border: none;
+                    border-radius: 3px;
+                    padding: 7px 0;
+                    width: 70%;
+                    font-size: 15px;
+                    margin: 14px auto 0 auto;
+                    display: block;
+                    cursor: pointer;
+                    text-align: center;
+                }
+                .standard-btn:active { opacity: 0.9; }
+                </style>
+            ''', unsafe_allow_html=True)
+            # Initialize selected numbers
+            if 'selected_numbers' not in st.session_state:
+                st.session_state['selected_numbers'] = []
+            # Number grid
+            numbers = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+            # Row 1: 10, 20, 30, 40
+            row1_cols = st.columns(4)
+            for i, num in enumerate([10, 20, 30, 40]):
+                with row1_cols[i]:
+                    if st.button(str(num), key=f"num_{num}_row1", use_container_width=True):
+                        if num in st.session_state['selected_numbers']:
+                            st.session_state['selected_numbers'].remove(num)
+                        else:
+                            st.session_state['selected_numbers'].append(num)
+            # Row 2: 50, 60, 70, 80
+            row2_cols = st.columns(4)
+            for i, num in enumerate([50, 60, 70, 80]):
+                with row2_cols[i]:
+                    if st.button(str(num), key=f"num_{num}_row2", use_container_width=True):
+                        if num in st.session_state['selected_numbers']:
+                            st.session_state['selected_numbers'].remove(num)
+                        else:
+                            st.session_state['selected_numbers'].append(num)
+            # Row 3: 90, 100 (centered)
+            st.markdown("<div style='text-align:center;'>", unsafe_allow_html=True)
+            col90, col100 = st.columns(2)
+            with col90:
+                if st.button("90", key="num_90_row3", use_container_width=True):
+                    if 90 in st.session_state['selected_numbers']:
+                        st.session_state['selected_numbers'].remove(90)
                     else:
-                        st.session_state['selected_numbers'].append(num)
-        
-        # Row 2: 50, 60, 70, 80
-        row2_cols = st.columns(4)
-        for i, num in enumerate([50, 60, 70, 80]):
-            with row2_cols[i]:
-                if st.button(str(num), key=f"num_{num}_row2", use_container_width=True):
-                    if num in st.session_state['selected_numbers']:
-                        st.session_state['selected_numbers'].remove(num)
+                        st.session_state['selected_numbers'].append(90)
+            with col100:
+                if st.button("100", key="num_100_row3", use_container_width=True):
+                    if 100 in st.session_state['selected_numbers']:
+                        st.session_state['selected_numbers'].remove(100)
                     else:
-                        st.session_state['selected_numbers'].append(num)
-        
-        # Row 3: 90, 100 (centered)
-        st.markdown("<div style='text-align:center;'>", unsafe_allow_html=True)
-        col90, col100 = st.columns(2)
-        with col90:
-            if st.button("90", key="num_90_row3", use_container_width=True):
-                if 90 in st.session_state['selected_numbers']:
-                    st.session_state['selected_numbers'].remove(90)
-                else:
-                    st.session_state['selected_numbers'].append(90)
-        with col100:
-            if st.button("100", key="num_100_row3", use_container_width=True):
-                if 100 in st.session_state['selected_numbers']:
-                    st.session_state['selected_numbers'].remove(100)
-                else:
-                    st.session_state['selected_numbers'].append(100)
-        
-        # Start button
-        st.markdown("<div style='text-align:center;margin-top:15px;'><button class='standard-btn'>Start</button></div>", unsafe_allow_html=True)
+                        st.session_state['selected_numbers'].append(100)
+            # Start button
+            st.markdown("<div style='text-align:center;margin-top:15px;'><button class='standard-btn'>Start</button></div>", unsafe_allow_html=True)
 
     # --- Custom Step Test popup ---
     if st.session_state.get('show_custom_step_popup', False):
