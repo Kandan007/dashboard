@@ -655,22 +655,16 @@ with right:
         ''', unsafe_allow_html=True)
         # Target File Section
         st.markdown("<div class='file-label'>Target File:</div>", unsafe_allow_html=True)
-        tcol1, tcol2, tcol3 = st.columns([1, 2, 2])
-        with tcol2:
-            target_source = st.selectbox("Source:", ["Select source...", "My Files", "Shared Files", "System (Local Device)", "External Cloud Sources"], key="target_source")
-        with tcol3:
-            if st.session_state.get('target_source', "Select source...") != "Select source...":
-                target_files = ['file1.csv', 'file2.csv', 'file3.csv']
-                target_file = st.selectbox("File:", target_files, key="target_file")
+        target_source = st.selectbox("Source:", ["Select source...", "My Files", "Shared Files", "System (Local Device)", "External Cloud Sources"], key="target_source")
+        if target_source != "Select source...":
+            target_files = ['file1.csv', 'file2.csv', 'file3.csv']
+            target_file = st.selectbox("Select file:", target_files, key="target_file")
         # Benchmark File Section
         st.markdown("<div class='file-label'>Benchmark File:</div>", unsafe_allow_html=True)
-        bcol1, bcol2, bcol3 = st.columns([1, 2, 2])
-        with bcol2:
-            benchmark_source = st.selectbox("Source:", ["Select source...", "My Files", "Shared Files", "System (Local Device)", "External Cloud Sources"], key="benchmark_source")
-        with bcol3:
-            if st.session_state.get('benchmark_source', "Select source...") != "Select source...":
-                benchmark_files = ['file1.csv', 'file2.csv', 'file3.csv']
-                benchmark_file = st.selectbox("File:", benchmark_files, key="benchmark_file")
+        benchmark_source = st.selectbox("Source:", ["Select source...", "My Files", "Shared Files", "System (Local Device)", "External Cloud Sources"], key="benchmark_source")
+        if benchmark_source != "Select source...":
+            benchmark_files = ['file1.csv', 'file2.csv', 'file3.csv']
+            benchmark_file = st.selectbox("Select file:", benchmark_files, key="benchmark_file")
         st.markdown("<div style='text-align:center;margin-top:15px;'><button class='shared-btn'>Start</button></div>", unsafe_allow_html=True)
 
     plot_labels = [
