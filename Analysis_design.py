@@ -655,18 +655,16 @@ with right:
         ''', unsafe_allow_html=True)
         # Target File Section
         st.markdown("<div class='file-label'>Target File:</div>", unsafe_allow_html=True)
-        # File source selection for target file
-        target_source = st.selectbox("Source:", ["My Files", "Shared Files", "System (Local Device)", "External Cloud Sources"], key="target_source")
-        # Show file dropdown after source is selected
-        target_files = ['file1.csv', 'file2.csv', 'file3.csv']
-        target_file = st.selectbox("Select file:", target_files, key="target_file")
+        target_source = st.selectbox("Source:", ["Select source...", "My Files", "Shared Files", "System (Local Device)", "External Cloud Sources"], key="target_source")
+        if target_source != "Select source...":
+            target_files = ['file1.csv', 'file2.csv', 'file3.csv']
+            target_file = st.selectbox("Select file:", target_files, key="target_file")
         # Benchmark File Section
         st.markdown("<div class='file-label'>Benchmark File:</div>", unsafe_allow_html=True)
-        # File source selection for benchmark file
-        benchmark_source = st.selectbox("Source:", ["My Files", "Shared Files", "System (Local Device)", "External Cloud Sources"], key="benchmark_source")
-        # Show file dropdown after source is selected
-        benchmark_files = ['file1.csv', 'file2.csv', 'file3.csv']
-        benchmark_file = st.selectbox("Select file:", benchmark_files, key="benchmark_file")
+        benchmark_source = st.selectbox("Source:", ["Select source...", "My Files", "Shared Files", "System (Local Device)", "External Cloud Sources"], key="benchmark_source")
+        if benchmark_source != "Select source...":
+            benchmark_files = ['file1.csv', 'file2.csv', 'file3.csv']
+            benchmark_file = st.selectbox("Select file:", benchmark_files, key="benchmark_file")
         st.markdown("<div style='text-align:center;margin-top:15px;'><button class='shared-btn'>Start</button></div>", unsafe_allow_html=True)
 
     plot_labels = [
