@@ -465,16 +465,16 @@ with right:
         if 'repeat_times' not in st.session_state:
             st.session_state['repeat_times'] = 5
         
-        # Header: Throttle sequence with Repeat Sequence checkbox
-        header_col1, header_col2, header_col3, header_col4 = st.columns([2, 1, 0.5, 0.5])
+        # Header: Throttle sequence with Repeat Sequence checkbox and times input in one row
+        header_col1, header_col2, header_col3, header_col4 = st.columns([2, 1, 1, 0.5])
         with header_col1:
             st.markdown("<div style='text-align:left;font-weight:bold;font-size:16px;margin-bottom:5px;'>Throttle sequence</div>", unsafe_allow_html=True)
         with header_col2:
             st.checkbox("Repeat Sequence", key="repeat_sequence", value=True)
         with header_col3:
-            st.number_input("", min_value=1, value=st.session_state['repeat_times'], key="repeat_times_input")
+            st.number_input("", min_value=1, value=st.session_state['repeat_times'], key="repeat_times_input", label_visibility="collapsed")
         with header_col4:
-            st.markdown("<div style='font-size:12px;margin-top:40px;'>times</div>", unsafe_allow_html=True)
+            st.markdown("<div style='font-size:12px;margin-top:8px;'>times</div>", unsafe_allow_html=True)
         
         # Table with +/- buttons
         st.markdown("<div style='margin:5px 0;max-height:150px;overflow-y:auto;'>", unsafe_allow_html=True)
