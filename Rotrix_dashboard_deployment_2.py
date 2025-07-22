@@ -774,7 +774,13 @@ def main():
 
         if analysis_type == "Single File Analysis":
             # Single File Analysis
-            col1, col_mid, col2 = st.columns([0.9, 0.25, 1])
+            file_ext = os.path.splitext(st.session_state.single_file_selection)[-1].lower() if st.session_state.single_file_selection != "None" else None
+            # Dynamically set columns based on file type
+            if file_ext == ".ulg":
+                col1, col_mid, col2 = st.columns([0.9, 0.25, 1])
+            else:
+                col1, col2 = st.columns([1, 1])
+                col_mid = None
             with col1:
                 file_options = ["None"] + [f.name for f in st.session_state.uploaded_files]
                 if st.session_state.single_file_selection not in file_options:
@@ -816,22 +822,15 @@ def main():
                 if selected_file == "None":
                     st.info("📋 Please select a file to begin Single File Analysis")
                     st.stop()
-                
-                motor_type = None
-                file_ext = os.path.splitext(selected_file)[-1].lower() if selected_file != "None" else None
-                # Only show drone type radio for .ulg files
-                if file_ext == ".ulg":
-                    with col_mid:
-                        motor_type = st.radio(
-                            "Drone Type",
-                            ["Quad", "Hexa"],
-                            index=0,  # Default to Quad
-                            key="motor_type_single",
-                            horizontal=True
-                        )
-            # For CSV, skip col_mid and move to col2 directly
-            if file_ext != ".ulg":
-                col2 = st.columns([1])[0]
+            if file_ext == ".ulg" and col_mid is not None:
+                with col_mid:
+                    motor_type = st.radio(
+                        "Drone Type",
+                        ["Quad", "Hexa"],
+                        index=0,  # Default to Quad
+                        key="motor_type_single",
+                        horizontal=True
+                    )
             with col2:
                 topic_options = []
                 loaded_data = None
