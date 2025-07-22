@@ -819,17 +819,9 @@ def main():
             
                 motor_type = None
                 file_ext = os.path.splitext(selected_file)[-1].lower() if selected_file != "None" else None
-                with col_mid:
-                    if file_ext == ".ulg":
-                        motor_type = st.radio(
-                            "Drone Type",
-                            ["Quad", "Hexa"],
-                            index=0,  # Default to Quad
-                            key="motor_type_single",
-                            horizontal=True
-                        )
-                    else:
-                        # For non-ULG files, still show the radio button but default to Quad
+                # Only show drone type radio for .ulg files
+                if file_ext == ".ulg":
+                    with col_mid:
                         motor_type = st.radio(
                             "Drone Type",
                             ["Quad", "Hexa"],
