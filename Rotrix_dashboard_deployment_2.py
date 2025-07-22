@@ -986,460 +986,460 @@ def main():
                                 plot_data.append(None)
                                 filtered_dfs_for_data_tab.append(None)
 
-                    # Tabs for Plot and Data
-                    tab_plot, tab_data = st.tabs(["📊 PLOT", "📋 DATA"])
-                    with tab_plot:
-                        # Create main layout with plots on left and parameters on right
-                        plot_col, param_col = st.columns([8.5, 2.5])
+                # Tabs for Plot and Data
+                tab_plot, tab_data = st.tabs(["📊 PLOT", "📋 DATA"])
+                with tab_plot:
+                    # Create main layout with plots on left and parameters on right
+                    plot_col, param_col = st.columns([8.5, 2.5])
+                    
+                    with param_col:
+                        # Parameter controls section
+                        st.markdown("#### 📝 Parameters")
                         
-                        with param_col:
-                            # Parameter controls section
-                            st.markdown("#### 📝 Parameters")
-                            
-                            # Get actual min/max values for axis limits
-                            x_min_actual = 0.0
-                            x_max_actual = 100.0
-                            
-                            if plot_data and len(plot_data) > 0:
-                                # Get x-axis range from first plot data
-                                first_df = plot_data[0]["df"]
-                                if 'timestamp_seconds' in first_df.columns:
-                                    x_min_actual = float(first_df['timestamp_seconds'].min())
-                                    x_max_actual = float(first_df['timestamp_seconds'].max())
-                                elif 'Index' in first_df.columns:
-                                    # For CSV files, use Index column
-                                    x_min_actual = float(first_df['Index'].min())
-                                    x_max_actual = float(first_df['Index'].max())
+                        # Get actual min/max values for axis limits
+                        x_min_actual = 0.0
+                        x_max_actual = 100.0
+                        
+                        if plot_data and len(plot_data) > 0:
+                            # Get x-axis range from first plot data
+                            first_df = plot_data[0]["df"]
+                            if 'timestamp_seconds' in first_df.columns:
+                                x_min_actual = float(first_df['timestamp_seconds'].min())
+                                x_max_actual = float(first_df['timestamp_seconds'].max())
+                            elif 'Index' in first_df.columns:
+                                # For CSV files, use Index column
+                                x_min_actual = float(first_df['Index'].min())
+                                x_max_actual = float(first_df['Index'].max())
+                            else:
+                                # Fallback to index-based values
+                                x_min_actual = 0.0
+                                x_max_actual = float(len(first_df) - 1)
+                        
+                        # Z-Score threshold for anomaly detection
+                        st.markdown("<span style='font-size:0.9rem; color:#444; font-weight:500;'>Z-Score Threshold</span>", unsafe_allow_html=True)
+                        z_threshold = st.slider("", 1.0, 5.0, 3.0, 0.1, help="Threshold for detecting abnormal data points", label_visibility="collapsed")
+                        
+                        # X-Axis limits
+                        st.markdown(f"<span style='font-size:0.9rem; color:#444; font-weight:500;'>X-Axis Limits</span>", unsafe_allow_html=True)
+                        x_min_col, x_max_col, x_reset_col = st.columns([6, 6, 2])
+                        with x_min_col:
+                            if file_ext == ".ulg":
+                                # Check if reset was pressed
+                                if st.session_state.get("reset_x_pressed", False):
+                                    x_min_default = seconds_to_mmss(x_min_actual)
+                                    st.session_state["reset_x_pressed"] = False
                                 else:
-                                    # Fallback to index-based values
-                                    x_min_actual = 0.0
-                                    x_max_actual = float(len(first_df) - 1)
-                            
-                            # Z-Score threshold for anomaly detection
-                            st.markdown("<span style='font-size:0.9rem; color:#444; font-weight:500;'>Z-Score Threshold</span>", unsafe_allow_html=True)
-                            z_threshold = st.slider("", 1.0, 5.0, 3.0, 0.1, help="Threshold for detecting abnormal data points", label_visibility="collapsed")
-                            
-                            # X-Axis limits
-                            st.markdown(f"<span style='font-size:0.9rem; color:#444; font-weight:500;'>X-Axis Limits</span>", unsafe_allow_html=True)
-                            x_min_col, x_max_col, x_reset_col = st.columns([6, 6, 2])
-                            with x_min_col:
-                                if file_ext == ".ulg":
-                                    # Check if reset was pressed
-                                    if st.session_state.get("reset_x_pressed", False):
-                                        x_min_default = seconds_to_mmss(x_min_actual)
-                                        st.session_state["reset_x_pressed"] = False
-                                    else:
-                                        x_min_default = st.session_state.get("x_min_grid_mmss", seconds_to_mmss(x_min_actual))
-                                    st.markdown("<span style='font-size:0.8rem; color:#666;'>Start (MM:SS)</span>", unsafe_allow_html=True)
-                                    x_min = st.text_input("", value=x_min_default, key="x_min_grid_mmss", label_visibility="collapsed")
-                                    # Convert MM:SS to seconds for processing
-                                    x_min_seconds = mmss_to_seconds(x_min) if x_min else x_min_actual
+                                    x_min_default = st.session_state.get("x_min_grid_mmss", seconds_to_mmss(x_min_actual))
+                                st.markdown("<span style='font-size:0.8rem; color:#666;'>Start (MM:SS)</span>", unsafe_allow_html=True)
+                                x_min = st.text_input("", value=x_min_default, key="x_min_grid_mmss", label_visibility="collapsed")
+                                # Convert MM:SS to seconds for processing
+                                x_min_seconds = mmss_to_seconds(x_min) if x_min else x_min_actual
+                            else:
+                                # Check if reset was pressed
+                                if st.session_state.get("reset_x_pressed", False):
+                                    x_min_default = float(x_min_actual)
+                                    st.session_state["reset_x_pressed"] = False
                                 else:
-                                    # Check if reset was pressed
-                                    if st.session_state.get("reset_x_pressed", False):
-                                        x_min_default = float(x_min_actual)
-                                        st.session_state["reset_x_pressed"] = False
-                                    else:
-                                        x_min_default = st.session_state.get("x_min_grid", float(x_min_actual))
-                                    st.markdown("<span style='font-size:0.8rem; color:#666;'>Start</span>", unsafe_allow_html=True)
-                                    x_min = st.number_input("", value=x_min_default, format="%.2f", key="x_min_grid", step=1.0, label_visibility="collapsed")
-                                    x_min_seconds = float(x_min)
-                            with x_max_col:
-                                if file_ext == ".ulg":
-                                    # Check if reset was pressed
-                                    if st.session_state.get("reset_x_pressed", False):
-                                        x_max_default = seconds_to_mmss(x_max_actual)
-                                        st.session_state["reset_x_pressed"] = False
-                                    else:
-                                        x_max_default = st.session_state.get("x_max_grid_mmss", seconds_to_mmss(x_max_actual))
-                                    st.markdown("<span style='font-size:0.8rem; color:#666;'>End (MM:SS)</span>", unsafe_allow_html=True)
-                                    x_max = st.text_input("", value=x_max_default, key="x_max_grid_mmss", label_visibility="collapsed")
-                                    # Convert MM:SS to seconds for processing
-                                    x_max_seconds = mmss_to_seconds(x_max) if x_max else x_max_actual
+                                    x_min_default = st.session_state.get("x_min_grid", float(x_min_actual))
+                                st.markdown("<span style='font-size:0.8rem; color:#666;'>Start</span>", unsafe_allow_html=True)
+                                x_min = st.number_input("", value=x_min_default, format="%.2f", key="x_min_grid", step=1.0, label_visibility="collapsed")
+                                x_min_seconds = float(x_min)
+                        with x_max_col:
+                            if file_ext == ".ulg":
+                                # Check if reset was pressed
+                                if st.session_state.get("reset_x_pressed", False):
+                                    x_max_default = seconds_to_mmss(x_max_actual)
+                                    st.session_state["reset_x_pressed"] = False
                                 else:
-                                    # Check if reset was pressed
-                                    if st.session_state.get("reset_x_pressed", False):
-                                        x_max_default = float(x_max_actual)
-                                        st.session_state["reset_x_pressed"] = False
+                                    x_max_default = st.session_state.get("x_max_grid_mmss", seconds_to_mmss(x_max_actual))
+                                st.markdown("<span style='font-size:0.8rem; color:#666;'>End (MM:SS)</span>", unsafe_allow_html=True)
+                                x_max = st.text_input("", value=x_max_default, key="x_max_grid_mmss", label_visibility="collapsed")
+                                # Convert MM:SS to seconds for processing
+                                x_max_seconds = mmss_to_seconds(x_max) if x_max else x_max_actual
+                            else:
+                                # Check if reset was pressed
+                                if st.session_state.get("reset_x_pressed", False):
+                                    x_max_default = float(x_max_actual)
+                                    st.session_state["reset_x_pressed"] = False
+                                else:
+                                    x_max_default = st.session_state.get("x_max_grid", float(x_max_actual))
+                                st.markdown("<span style='font-size:0.8rem; color:#666;'>End</span>", unsafe_allow_html=True)
+                                x_max = st.number_input("", value=x_max_default, format="%.2f", key="x_max_grid", step=1.0, label_visibility="collapsed")
+                                x_max_seconds = float(x_max)
+                        with x_reset_col:
+                            st.markdown('<div style="margin-top: 28px;"></div>', unsafe_allow_html=True)
+                            if st.button("↺", key="reset_x_grid", help="Reset X-axis range"):
+                                # Set flag to reset values
+                                st.session_state["reset_x_pressed"] = True
+                                # Clear the stored values
+                                if "x_min_grid_mmss" in st.session_state:
+                                    del st.session_state["x_min_grid_mmss"]
+                                if "x_max_grid_mmss" in st.session_state:
+                                    del st.session_state["x_max_grid_mmss"]
+                                if "x_min_grid" in st.session_state:
+                                    del st.session_state["x_min_grid"]
+                                if "x_max_grid" in st.session_state:
+                                    del st.session_state["x_max_grid"]
+                                st.rerun()
+                        
+                        # Abnormal Points Summary
+                        st.markdown("---")
+                        st.markdown("#### 🔴 Anomaly Detection")
+                        
+                        if plot_data and len(plot_data) > 0:
+                            total_abnormal = 0
+                            total_points = 0
+                            abnormal_details = []
+                            
+                            for idx, pdata in enumerate(plot_data):
+                                if pdata is not None:
+                                    df = pdata["df"]
+                                    if "y_col" in pdata:
+                                        # ULG file structure
+                                        y_col = pdata["y_col"]
+                                        y_cols = [y_col]
+                                        plot_name = f"{pdata.get('topic', 'Data')} - {y_col}"
                                     else:
-                                        x_max_default = st.session_state.get("x_max_grid", float(x_max_actual))
-                                    st.markdown("<span style='font-size:0.8rem; color:#666;'>End</span>", unsafe_allow_html=True)
-                                    x_max = st.number_input("", value=x_max_default, format="%.2f", key="x_max_grid", step=1.0, label_visibility="collapsed")
-                                    x_max_seconds = float(x_max)
-                            with x_reset_col:
-                                st.markdown('<div style="margin-top: 28px;"></div>', unsafe_allow_html=True)
-                                if st.button("↺", key="reset_x_grid", help="Reset X-axis range"):
-                                    # Set flag to reset values
-                                    st.session_state["reset_x_pressed"] = True
-                                    # Clear the stored values
-                                    if "x_min_grid_mmss" in st.session_state:
-                                        del st.session_state["x_min_grid_mmss"]
-                                    if "x_max_grid_mmss" in st.session_state:
-                                        del st.session_state["x_max_grid_mmss"]
-                                    if "x_min_grid" in st.session_state:
-                                        del st.session_state["x_min_grid"]
-                                    if "x_max_grid" in st.session_state:
-                                        del st.session_state["x_max_grid"]
-                                    st.rerun()
-                            
-                            # Abnormal Points Summary
-                            st.markdown("---")
-                            st.markdown("#### 🔴 Anomaly Detection")
-                            
-                            if plot_data and len(plot_data) > 0:
-                                total_abnormal = 0
-                                total_points = 0
-                                abnormal_details = []
-                                
-                                for idx, pdata in enumerate(plot_data):
-                                    if pdata is not None:
-                                        df = pdata["df"]
-                                        if "y_col" in pdata:
-                                            # ULG file structure
-                                            y_col = pdata["y_col"]
-                                            y_cols = [y_col]
-                                            plot_name = f"{pdata.get('topic', 'Data')} - {y_col}"
-                                        else:
-                                            # Non-ULG file structure
-                                            y_cols = pdata["y_cols"]
-                                            plot_name = pdata.get("topic", f"Plot {idx+1}")
-                                        
-                                        plot_abnormal_count = 0
-                                        plot_total_points = 0
-                                        
-                                        for y_col in y_cols:
-                                            if y_col in df.columns:
-                                                # Calculate z-scores
-                                                mean_val = df[y_col].mean()
-                                                std_val = df[y_col].std()
-                                                if std_val > 0:
-                                                    z_scores = np.abs((df[y_col] - mean_val) / std_val)
-                                                    abnormal_mask = z_scores > z_threshold
-                                                    plot_abnormal_count += abnormal_mask.sum()
-                                                    plot_total_points += len(df[y_col])
-                                        
-                                        if plot_abnormal_count > 0:
-                                            percentage = (plot_abnormal_count / plot_total_points) * 100 if plot_total_points > 0 else 0
-                                            abnormal_details.append({
-                                                "name": plot_name,
-                                                "count": plot_abnormal_count,
-                                                "total": plot_total_points,
-                                                "percentage": percentage
-                                            })
-                                            total_abnormal += plot_abnormal_count
-                                            total_points += plot_total_points
-                                        
-                                if total_abnormal > 0:
-                                    overall_percentage = (total_abnormal / total_points) * 100 if total_points > 0 else 0
+                                        # Non-ULG file structure
+                                        y_cols = pdata["y_cols"]
+                                        plot_name = pdata.get("topic", f"Plot {idx+1}")
                                     
-                                    # Summary box
-                                    st.markdown(f"""
-                                    <div style='background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; padding: 10px; margin: 6px 0;'>
-                                        <div style='font-weight: bold; color: #856404; margin-bottom: 6px; font-size: 0.9rem;'>
-                                            �� Summary (Z-Score > {z_threshold})
-                                        </div>
-                                        <div style='font-size: 0.95rem; color: #d63031;'>
-                                            <strong>{total_abnormal:,}</strong> abnormal points out of <strong>{total_points:,}</strong> total
-                                        </div>
-                                        <div style='font-size: 0.8rem; color: #6c5ce7;'>
-                                            <strong>{overall_percentage:.1f}%</strong> of data points are abnormal
-                                        </div>
-                                    </div>
-                                    """, unsafe_allow_html=True)
+                                    plot_abnormal_count = 0
+                                    plot_total_points = 0
                                     
-                                    # Detailed breakdown
-                                    st.markdown("**📋 Breakdown by Plot:**")
-                                    for idx, detail in enumerate(abnormal_details):
-                                        severity_color = "#e74c3c" if detail["percentage"] > 5 else "#f39c12" if detail["percentage"] > 2 else "#27ae60"
-                                        
-                                        # Create columns for the breakdown and button
-                                        col1, col2 = st.columns([4, 1])
-                                        
-                                        with col1:
-                                            st.markdown(f"""
-                                            <div style='margin: 4px 0; padding: 6px; border-left: 3px solid {severity_color}; background-color: #f8f9fa;'>
-                                                <div style='font-weight: 600; color: #2c3e50;'>{detail["name"]}</div>
-                                                <div style='font-size: 0.9em; color: #7f8c8d;'>
-                                                    {detail["count"]:,} abnormal / {detail["total"]:,} total ({detail["percentage"]:.1f}%)
-                                                </div>
-                                            </div>
-                                            """, unsafe_allow_html=True)
-                                        
-                                        with col2:
-                                            if st.button("📊 View", key=f"view_abnormal_{idx}", help="View abnormal data points"):
-                                                st.session_state[f"show_abnormal_table_{idx}"] = not st.session_state.get(f"show_abnormal_table_{idx}", False)
-                                                st.rerun()
-                                        
-                                        # Show abnormal data table if button is pressed
-                                        if st.session_state.get(f"show_abnormal_table_{idx}", False):
-                                            st.markdown("**🔍 Abnormal Data Points:**")
-                                            
-                                            # Find the corresponding plot data
-                                            plot_idx = None
-                                            for i, pdata in enumerate(plot_data):
-                                                if pdata is not None:
-                                                    if "y_col" in pdata:
-                                                        plot_name = f"{pdata.get('topic', 'Data')} - {pdata['y_col']}"
-                                                    else:
-                                                        plot_name = pdata.get("topic", f"Plot {i+1}")
-                                                    
-                                                    if plot_name == detail["name"]:
-                                                        plot_idx = i
-                                                        break
-                                            
-                                            if plot_idx is not None:
-                                                pdata = plot_data[plot_idx]
-                                                df = pdata["df"]
-                                                
-                                                if "y_col" in pdata:
-                                                    # ULG file structure
-                                                    y_col = pdata["y_col"]
-                                                    y_cols = [y_col]
-                                                    x_col = "timestamp_seconds"
-                                                else:
-                                                    # Non-ULG file structure
-                                                    y_cols = pdata["y_cols"]
-                                                    x_col = pdata.get("x_col", "timestamp_seconds")
-                                                
-                                                # Collect abnormal data points
-                                                abnormal_data = []
-                                                for y_col in y_cols:
-                                                    if y_col in df.columns:
-                                                        mean_val = df[y_col].mean()
-                                                        std_val = df[y_col].std()
-                                                        if std_val > 0:
-                                                            z_scores = np.abs((df[y_col] - mean_val) / std_val)
-                                                            abnormal_mask = z_scores > z_threshold
-                                                            
-                                                            if abnormal_mask.any():
-                                                                abnormal_df = df[abnormal_mask].copy()
-                                                                abnormal_df['Z_Score'] = z_scores[abnormal_mask]
-                                                                
-                                                                # Select relevant columns for display (without Column)
-                                                                display_cols = [x_col, y_col, 'Z_Score']
-                                                                abnormal_df_display = abnormal_df[display_cols].copy()
-                                                                
-                                                                # Format timestamp for ULG files
-                                                                if file_ext == ".ulg" and x_col == "timestamp_seconds":
-                                                                    abnormal_df_display['Time'] = abnormal_df_display[x_col].apply(seconds_to_mmss)
-                                                                    display_cols = ['Time', y_col, 'Z_Score']
-                                                                    abnormal_df_display = abnormal_df_display[display_cols]
-                                                                
-                                                                abnormal_data.append(abnormal_df_display)
-                                                
-                                                if abnormal_data:
-                                                    # Combine all abnormal data
-                                                    combined_abnormal = pd.concat(abnormal_data, ignore_index=True)
-                                                    combined_abnormal = combined_abnormal.sort_values('Z_Score', ascending=False)
-                                                    
-                                                    # Limit to first 100 rows for performance
-                                                    if len(combined_abnormal) > 100:
-                                                        st.info(f"Showing first 100 of {len(combined_abnormal)} abnormal points")
-                                                        combined_abnormal = combined_abnormal.head(100)
-                                                    
-                                                    st.dataframe(combined_abnormal, use_container_width=True)
-                                                    
-                                                    # Download button for abnormal data
-                                                    csv = combined_abnormal.to_csv(index=False)
-                                                    st.download_button(
-                                                        label="📥 Download Abnormal Data",
-                                                        data=csv,
-                                                        file_name=f"abnormal_data_{detail['name'].replace(' ', '_').replace('-', '_')}.csv",
-                                                        mime="text/csv"
-                                                    )
-                                                else:
-                                                    st.info("No abnormal data points found for this plot")
-                                            
-                                            st.markdown("---")
-                                    else:
-                                        st.markdown("""
-                                        <div style='background-color: #d4edda; border: 1px solid #c3e6cb; border-radius: 8px; padding: 12px; margin: 8px 0;'>
-                                            <div style='font-weight: bold; color: #155724;'>
-                                                ✅ No Abnormal Points Detected
-                                            </div>
-                                            <div style='font-size: 0.9em; color: #0f5132; margin-top: 4px;'>
-                                                All data points are within normal range (Z-Score ≤ {z_threshold})
-                                            </div>
-                                        </div>
-                                        """.format(z_threshold=z_threshold), unsafe_allow_html=True)
-                                else:
-                                    st.markdown("""
-                                    <div style='background-color: #f8d7da; border: 1px solid #f5c6cb; border-radius: 8px; padding: 12px; margin: 8px 0;'>
-                                        <div style='font-weight: bold; color: #721c24;'>
-                                            ⚠️ No Data Available
-                                        </div>
-                                        <div style='font-size: 0.9em; color: #721c24; margin-top: 4px;'>
-                                            Please select a file and topic to analyze
-                                        </div>
+                                    for y_col in y_cols:
+                                        if y_col in df.columns:
+                                            # Calculate z-scores
+                                            mean_val = df[y_col].mean()
+                                            std_val = df[y_col].std()
+                                            if std_val > 0:
+                                                z_scores = np.abs((df[y_col] - mean_val) / std_val)
+                                                abnormal_mask = z_scores > z_threshold
+                                                plot_abnormal_count += abnormal_mask.sum()
+                                                plot_total_points += len(df[y_col])
+                                    
+                                    if plot_abnormal_count > 0:
+                                        percentage = (plot_abnormal_count / plot_total_points) * 100 if plot_total_points > 0 else 0
+                                        abnormal_details.append({
+                                            "name": plot_name,
+                                            "count": plot_abnormal_count,
+                                            "total": plot_total_points,
+                                            "percentage": percentage
+                                        })
+                                        total_abnormal += plot_abnormal_count
+                                        total_points += plot_total_points
+                                    
+                            if total_abnormal > 0:
+                                overall_percentage = (total_abnormal / total_points) * 100 if total_points > 0 else 0
+                                
+                                # Summary box
+                                st.markdown(f"""
+                                <div style='background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; padding: 10px; margin: 6px 0;'>
+                                    <div style='font-weight: bold; color: #856404; margin-bottom: 6px; font-size: 0.9rem;'>
+                                        �� Summary (Z-Score > {z_threshold})
                                     </div>
-                                    """, unsafe_allow_html=True)
+                                    <div style='font-size: 0.95rem; color: #d63031;'>
+                                        <strong>{total_abnormal:,}</strong> abnormal points out of <strong>{total_points:,}</strong> total
+                                    </div>
+                                    <div style='font-size: 0.8rem; color: #6c5ce7;'>
+                                        <strong>{overall_percentage:.1f}%</strong> of data points are abnormal
+                                    </div>
+                                </div>
+                                """, unsafe_allow_html=True)
                                 
-                            with plot_col:
-                                # Plot grid size based on motor type and user selection
-                                n_plots = len([p for p in plot_data if p is not None])
-                                if n_plots == 0:
-                                    st.info("Select at least one topic/column with valid data to plot.")
-                                    st.stop()
-                                
-                                # Determine grid layout
-                                if file_ext == ".ulg" and motor_type == "Hexa":
-                                    rows, cols = 3, 2
-                                    plot_data_to_show = plot_data  # Show all for Hexa
-                                else:
-                                    rows, cols = 2, 2
-                                    plot_data_to_show = plot_data[:4]  # Only show up to 4 plots for Quad
-                                
-                                plot_idx = 0
-                                for i in range(rows):
-                                    row_cols = st.columns(cols)
-                                    for j in range(cols):
-                                        if plot_idx >= len(plot_data_to_show):
-                                            continue
-                                        pdata = plot_data_to_show[plot_idx]
-                                        if pdata is not None:
-                                            with row_cols[j]:
-                                                df = pdata["df"].copy()  # Create a copy to avoid modifying original
-                                                
-                                                # Apply x-axis filtering based on limits
-                                                if file_ext == ".ulg" and 'timestamp_seconds' in df.columns:
-                                                    # Filter by timestamp range for ULG files
-                                                    df = df[(df['timestamp_seconds'] >= x_min_seconds) & (df['timestamp_seconds'] <= x_max_seconds)]
-                                                elif file_ext != ".ulg" and 'Index' in df.columns:
-                                                    # Filter by index range for CSV files
-                                                    df = df[(df['Index'] >= x_min_seconds) & (df['Index'] <= x_max_seconds)]
-                                                
-                                                # Handle both ULG (y_col) and non-ULG (y_cols) data structures
+                                # Detailed breakdown
+                                st.markdown("**📋 Breakdown by Plot:**")
+                                for idx, detail in enumerate(abnormal_details):
+                                    severity_color = "#e74c3c" if detail["percentage"] > 5 else "#f39c12" if detail["percentage"] > 2 else "#27ae60"
+                                    
+                                    # Create columns for the breakdown and button
+                                    col1, col2 = st.columns([4, 1])
+                                    
+                                    with col1:
+                                        st.markdown(f"""
+                                        <div style='margin: 4px 0; padding: 6px; border-left: 3px solid {severity_color}; background-color: #f8f9fa;'>
+                                            <div style='font-weight: 600; color: #2c3e50;'>{detail["name"]}</div>
+                                            <div style='font-size: 0.9em; color: #7f8c8d;'>
+                                                {detail["count"]:,} abnormal / {detail["total"]:,} total ({detail["percentage"]:.1f}%)
+                                            </div>
+                                        </div>
+                                        """, unsafe_allow_html=True)
+                                    
+                                    with col2:
+                                        if st.button("📊 View", key=f"view_abnormal_{idx}", help="View abnormal data points"):
+                                            st.session_state[f"show_abnormal_table_{idx}"] = not st.session_state.get(f"show_abnormal_table_{idx}", False)
+                                            st.rerun()
+                                    
+                                    # Show abnormal data table if button is pressed
+                                    if st.session_state.get(f"show_abnormal_table_{idx}", False):
+                                        st.markdown("**🔍 Abnormal Data Points:**")
+                                        
+                                        # Find the corresponding plot data
+                                        plot_idx = None
+                                        for i, pdata in enumerate(plot_data):
+                                            if pdata is not None:
                                                 if "y_col" in pdata:
-                                                    # ULG file structure
-                                                    y_col = pdata["y_col"]
-                                                    y_cols = [y_col]
-                                                    x_col = "timestamp_seconds"
-                                                    title_text = f"{pdata.get('topic', 'Plot')} - {y_col}"
+                                                    plot_name = f"{pdata.get('topic', 'Data')} - {pdata['y_col']}"
                                                 else:
-                                                    # Non-ULG file structure
-                                                    y_cols = pdata["y_cols"]
-                                                    x_col = pdata.get("x_col", "timestamp_seconds")
-                                                    title_text = pdata.get("topic", "Plot")
+                                                    plot_name = pdata.get("topic", f"Plot {i+1}")
                                                 
-                                                # Determine plot mode based on user selection
-                                                mode = 'lines' # Default to lines
-                                                
-                                                fig = go.Figure()
-                                                for y_col in y_cols:
-                                                    fig.add_trace(
-                                                        go.Scatter(
-                                                            x=df[x_col],
-                                                            y=df[y_col],
-                                                            mode=mode,
-                                                            name=f"{y_col}"
-                                                        )
-                                                    )
-                                                
-                                                # Add anomaly detection if z_threshold is set
-                                                if z_threshold > 0:
-                                                    for y_col in y_cols:
-                                                        # Calculate z-scores
-                                                        mean_val = df[y_col].mean()
-                                                        std_val = df[y_col].std()
+                                                if plot_name == detail["name"]:
+                                                    plot_idx = i
+                                                    break
+                                        
+                                        if plot_idx is not None:
+                                            pdata = plot_data[plot_idx]
+                                            df = pdata["df"]
+                                            
+                                            if "y_col" in pdata:
+                                                # ULG file structure
+                                                y_col = pdata["y_col"]
+                                                y_cols = [y_col]
+                                                x_col = "timestamp_seconds"
+                                            else:
+                                                # Non-ULG file structure
+                                                y_cols = pdata["y_cols"]
+                                                x_col = pdata.get("x_col", "timestamp_seconds")
+                                            
+                                            # Collect abnormal data points
+                                            abnormal_data = []
+                                            for y_col in y_cols:
+                                                if y_col in df.columns:
+                                                    mean_val = df[y_col].mean()
+                                                    std_val = df[y_col].std()
+                                                    if std_val > 0:
                                                         z_scores = np.abs((df[y_col] - mean_val) / std_val)
                                                         abnormal_mask = z_scores > z_threshold
                                                         
                                                         if abnormal_mask.any():
-                                                            abnormal_points = df[abnormal_mask]
-                                                            fig.add_trace(
-                                                                go.Scatter(
-                                                                    x=abnormal_points[x_col],
-                                                                    y=abnormal_points[y_col],
-                                                                    mode='markers',
-                                                                    marker=dict(color='red', size=8),
-                                                                    name=f'{y_col} (Abnormal)',
-                                                                    showlegend=False
-                                                                )
-                                                            )
+                                                            abnormal_df = df[abnormal_mask].copy()
+                                                            abnormal_df['Z_Score'] = z_scores[abnormal_mask]
+                                                            
+                                                            # Select relevant columns for display (without Column)
+                                                            display_cols = [x_col, y_col, 'Z_Score']
+                                                            abnormal_df_display = abnormal_df[display_cols].copy()
+                                                            
+                                                            # Format timestamp for ULG files
+                                                            if file_ext == ".ulg" and x_col == "timestamp_seconds":
+                                                                abnormal_df_display['Time'] = abnormal_df_display[x_col].apply(seconds_to_mmss)
+                                                                display_cols = ['Time', y_col, 'Z_Score']
+                                                                abnormal_df_display = abnormal_df_display[display_cols]
+                                                            
+                                                            abnormal_data.append(abnormal_df_display)
+                                            
+                                            if abnormal_data:
+                                                # Combine all abnormal data
+                                                combined_abnormal = pd.concat(abnormal_data, ignore_index=True)
+                                                combined_abnormal = combined_abnormal.sort_values('Z_Score', ascending=False)
                                                 
-                                                fig.update_layout(
-                                                    title_text=title_text,
-                                                    title_x=0.4,
-                                                    height=350,
-                                                    width=550,
-                                                    showlegend=True,
-                                                    margin=dict(t=30, b=40, l=40, r=40),
-                                                    legend=dict(
-                                                        orientation="h",
-                                                        yanchor="bottom",
-                                                        y=-.3,  # Move legend a bit lower
-                                                        xanchor="left",
-                                                        x=0.0
-                                                    ),
+                                                # Limit to first 100 rows for performance
+                                                if len(combined_abnormal) > 100:
+                                                    st.info(f"Showing first 100 of {len(combined_abnormal)} abnormal points")
+                                                    combined_abnormal = combined_abnormal.head(100)
+                                                
+                                                st.dataframe(combined_abnormal, use_container_width=True)
+                                                
+                                                # Download button for abnormal data
+                                                csv = combined_abnormal.to_csv(index=False)
+                                                st.download_button(
+                                                    label="📥 Download Abnormal Data",
+                                                    data=csv,
+                                                    file_name=f"abnormal_data_{detail['name'].replace(' ', '_').replace('-', '_')}.csv",
+                                                    mime="text/csv"
                                                 )
-                                                
-                                                # Set proper x-axis title and formatting
-                                                if file_ext == ".ulg" and x_col == "timestamp_seconds":
-                                                    x_title = "Time (MM:SS)"
-                                                    # Add time formatting for ULG files
-                                                    if len(df[x_col]) > 0:
-                                                        tick_vals, tick_texts = get_timestamp_ticks(df[x_col])
-                                                        fig.update_xaxes(
-                                                            tickvals=tick_vals,
-                                                            ticktext=tick_texts,
-                                                            title_text=x_title,
-                                                            type='linear'
-                                                        )
-                                                else:
-                                                    x_title = "Index" if x_col == "Index" else "Time (secs)"
-                                                    fig.update_xaxes(title_text=x_title)
-                                                
-                                                st.plotly_chart(fig, use_container_width=True, key=f"plot_{plot_idx}")
-                                                # Show a single row of stats for all y_cols below the plot
-                                                stats_line = ""
+                                            else:
+                                                st.info("No abnormal data points found for this plot")
+                                        
+                                        st.markdown("---")
+                                else:
+                                    st.markdown("""
+                                    <div style='background-color: #d4edda; border: 1px solid #c3e6cb; border-radius: 8px; padding: 12px; margin: 8px 0;'>
+                                        <div style='font-weight: bold; color: #155724;'>
+                                            ✅ No Abnormal Points Detected
+                                        </div>
+                                        <div style='font-size: 0.9em; color: #0f5132; margin-top: 4px;'>
+                                            All data points are within normal range (Z-Score ≤ {z_threshold})
+                                        </div>
+                                    </div>
+                                    """.format(z_threshold=z_threshold), unsafe_allow_html=True)
+                            else:
+                                st.markdown("""
+                                <div style='background-color: #f8d7da; border: 1px solid #f5c6cb; border-radius: 8px; padding: 12px; margin: 8px 0;'>
+                                    <div style='font-weight: bold; color: #721c24;'>
+                                        ⚠️ No Data Available
+                                    </div>
+                                    <div style='font-size: 0.9em; color: #721c24; margin-top: 4px;'>
+                                        Please select a file and topic to analyze
+                                    </div>
+                                </div>
+                                """, unsafe_allow_html=True)
+                            
+                        with plot_col:
+                            # Plot grid size based on motor type and user selection
+                            n_plots = len([p for p in plot_data if p is not None])
+                            if n_plots == 0:
+                                st.info("Select at least one topic/column with valid data to plot.")
+                                st.stop()
+                            
+                            # Determine grid layout
+                            if file_ext == ".ulg" and motor_type == "Hexa":
+                                rows, cols = 3, 2
+                                plot_data_to_show = plot_data  # Show all for Hexa
+                            else:
+                                rows, cols = 2, 2
+                                plot_data_to_show = plot_data[:4]  # Only show up to 4 plots for Quad
+                            
+                            plot_idx = 0
+                            for i in range(rows):
+                                row_cols = st.columns(cols)
+                                for j in range(cols):
+                                    if plot_idx >= len(plot_data_to_show):
+                                        continue
+                                    pdata = plot_data_to_show[plot_idx]
+                                    if pdata is not None:
+                                        with row_cols[j]:
+                                            df = pdata["df"].copy()  # Create a copy to avoid modifying original
+                                            
+                                            # Apply x-axis filtering based on limits
+                                            if file_ext == ".ulg" and 'timestamp_seconds' in df.columns:
+                                                # Filter by timestamp range for ULG files
+                                                df = df[(df['timestamp_seconds'] >= x_min_seconds) & (df['timestamp_seconds'] <= x_max_seconds)]
+                                            elif file_ext != ".ulg" and 'Index' in df.columns:
+                                                # Filter by index range for CSV files
+                                                df = df[(df['Index'] >= x_min_seconds) & (df['Index'] <= x_max_seconds)]
+                                            
+                                            # Handle both ULG (y_col) and non-ULG (y_cols) data structures
+                                            if "y_col" in pdata:
+                                                # ULG file structure
+                                                y_col = pdata["y_col"]
+                                                y_cols = [y_col]
+                                                x_col = "timestamp_seconds"
+                                                title_text = f"{pdata.get('topic', 'Plot')} - {y_col}"
+                                            else:
+                                                # Non-ULG file structure
+                                                y_cols = pdata["y_cols"]
+                                                x_col = pdata.get("x_col", "timestamp_seconds")
+                                                title_text = pdata.get("topic", "Plot")
+                                            
+                                            # Determine plot mode based on user selection
+                                            mode = 'lines' # Default to lines
+                                            
+                                            fig = go.Figure()
+                                            for y_col in y_cols:
+                                                fig.add_trace(
+                                                    go.Scatter(
+                                                        x=df[x_col],
+                                                        y=df[y_col],
+                                                        mode=mode,
+                                                        name=f"{y_col}"
+                                                    )
+                                                )
+                                            
+                                            # Add anomaly detection if z_threshold is set
+                                            if z_threshold > 0:
                                                 for y_col in y_cols:
-                                                    if "y_col" in pdata:
-                                                        # ULG file structure - stats is already for the single column
-                                                        stats = pdata["stats"]
-                                                    else:
-                                                        # Non-ULG file structure - get stats for this column
-                                                        stats = pdata["stats"].loc[y_col]
-                                                    mean_val = stats["mean"]
-                                                    min_val = stats["min"]
-                                                    max_val = stats["max"]
-                                                    stats_line += f" Mean: {mean_val:.2f} | Min: {min_val:.2f} | Max: {max_val:.2f} &nbsp; &nbsp; "
-                                                st.markdown(
-                                                    f"<div style='text-align:center; font-size:1.05em; margin-top:-2.5em; margin-bottom:1.5em;'>{stats_line}</div>",
-                                                    unsafe_allow_html=True
-                                                )
-                                        plot_idx += 1
-                            with tab_data:
-                                # Show the filtered data table(s)
-                                if file_ext == ".ulg":
+                                                    # Calculate z-scores
+                                                    mean_val = df[y_col].mean()
+                                                    std_val = df[y_col].std()
+                                                    z_scores = np.abs((df[y_col] - mean_val) / std_val)
+                                                    abnormal_mask = z_scores > z_threshold
+                                                    
+                                                    if abnormal_mask.any():
+                                                        abnormal_points = df[abnormal_mask]
+                                                        fig.add_trace(
+                                                            go.Scatter(
+                                                                x=abnormal_points[x_col],
+                                                                y=abnormal_points[y_col],
+                                                                mode='markers',
+                                                                marker=dict(color='red', size=8),
+                                                                name=f'{y_col} (Abnormal)',
+                                                                showlegend=False
+                                                            )
+                                                        )
+                                            
+                                            fig.update_layout(
+                                                title_text=title_text,
+                                                title_x=0.4,
+                                                height=350,
+                                                width=550,
+                                                showlegend=True,
+                                                margin=dict(t=30, b=40, l=40, r=40),
+                                                legend=dict(
+                                                    orientation="h",
+                                                    yanchor="bottom",
+                                                    y=-.3,  # Move legend a bit lower
+                                                    xanchor="left",
+                                                    x=0.0
+                                                ),
+                                            )
+                                            
+                                            # Set proper x-axis title and formatting
+                                            if file_ext == ".ulg" and x_col == "timestamp_seconds":
+                                                x_title = "Time (MM:SS)"
+                                                # Add time formatting for ULG files
+                                                if len(df[x_col]) > 0:
+                                                    tick_vals, tick_texts = get_timestamp_ticks(df[x_col])
+                                                    fig.update_xaxes(
+                                                        tickvals=tick_vals,
+                                                        ticktext=tick_texts,
+                                                        title_text=x_title,
+                                                        type='linear'
+                                                    )
+                                            else:
+                                                x_title = "Index" if x_col == "Index" else "Time (secs)"
+                                                fig.update_xaxes(title_text=x_title)
+                                            
+                                            st.plotly_chart(fig, use_container_width=True, key=f"plot_{plot_idx}")
+                                            # Show a single row of stats for all y_cols below the plot
+                                            stats_line = ""
+                                            for y_col in y_cols:
+                                                if "y_col" in pdata:
+                                                    # ULG file structure - stats is already for the single column
+                                                    stats = pdata["stats"]
+                                                else:
+                                                    # Non-ULG file structure - get stats for this column
+                                                    stats = pdata["stats"].loc[y_col]
+                                                mean_val = stats["mean"]
+                                                min_val = stats["min"]
+                                                max_val = stats["max"]
+                                                stats_line += f" Mean: {mean_val:.2f} | Min: {min_val:.2f} | Max: {max_val:.2f} &nbsp; &nbsp; "
+                                            st.markdown(
+                                                f"<div style='text-align:center; font-size:1.05em; margin-top:-2.5em; margin-bottom:1.5em;'>{stats_line}</div>",
+                                                unsafe_allow_html=True
+                                            )
+                                    plot_idx += 1
+                        with tab_data:
+                            # Show the filtered data table(s)
+                            if file_ext == ".ulg":
+                                for filtered_df in filtered_dfs_for_data_tab:
+                                    if filtered_df is not None:
+                                        st.dataframe(filtered_df, use_container_width=True)
+                            else:
+                                # For CSV files, show a single consolidated table with all selected columns
+                                if filtered_dfs_for_data_tab and any(df is not None for df in filtered_dfs_for_data_tab):
+                                    # Get the first valid dataframe to use as base
+                                    base_df = next(df for df in filtered_dfs_for_data_tab if df is not None)
+                                    
+                                    # Create a consolidated dataframe with all selected columns
+                                    consolidated_df = base_df[['Index']].copy()
+                                    
+                                    # Add all selected columns to the consolidated dataframe
                                     for filtered_df in filtered_dfs_for_data_tab:
                                         if filtered_df is not None:
-                                            st.dataframe(filtered_df, use_container_width=True)
-                                else:
-                                    # For CSV files, show a single consolidated table with all selected columns
-                                    if filtered_dfs_for_data_tab and any(df is not None for df in filtered_dfs_for_data_tab):
-                                        # Get the first valid dataframe to use as base
-                                        base_df = next(df for df in filtered_dfs_for_data_tab if df is not None)
-                                        
-                                        # Create a consolidated dataframe with all selected columns
-                                        consolidated_df = base_df[['Index']].copy()
-                                        
-                                        # Add all selected columns to the consolidated dataframe
-                                        for filtered_df in filtered_dfs_for_data_tab:
-                                            if filtered_df is not None:
-                                                # Get the column name (excluding 'Index')
-                                                y_cols = [col for col in filtered_df.columns if col != 'Index']
-                                                for col in y_cols:
-                                                    if col not in consolidated_df.columns:
-                                                        consolidated_df[col] = filtered_df[col]
-                                        
-                                        st.dataframe(consolidated_df, use_container_width=True)
-                                        
-                                        # Show summary statistics for all columns
-                                        st.markdown("### 📊 Summary Statistics")
-                                        numeric_cols = [col for col in consolidated_df.columns if col != 'Index' and pd.api.types.is_numeric_dtype(consolidated_df[col])]
-                                        if numeric_cols:
-                                            summary_stats = consolidated_df[numeric_cols].describe()
-                                            st.dataframe(summary_stats, use_container_width=True)
+                                            # Get the column name (excluding 'Index')
+                                            y_cols = [col for col in filtered_df.columns if col != 'Index']
+                                            for col in y_cols:
+                                                if col not in consolidated_df.columns:
+                                                    consolidated_df[col] = filtered_df[col]
+                                    
+                                    st.dataframe(consolidated_df, use_container_width=True)
+                                    
+                                    # Show summary statistics for all columns
+                                    st.markdown("### 📊 Summary Statistics")
+                                    numeric_cols = [col for col in consolidated_df.columns if col != 'Index' and pd.api.types.is_numeric_dtype(consolidated_df[col])]
+                                    if numeric_cols:
+                                        summary_stats = consolidated_df[numeric_cols].describe()
+                                        st.dataframe(summary_stats, use_container_width=True)
 
         else:
             # Comparative Analysis
