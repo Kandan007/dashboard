@@ -834,47 +834,48 @@ def main():
         if analysis_type == "Single File Analysis":
             # Single File Analysis
             col1, col_mid, col2 = st.columns([0.9, 0.25, 1])
-            file_options = ["None"] + [f.name for f in st.session_state.uploaded_files]
-            if st.session_state.single_file_selection not in file_options:
-                st.session_state.single_file_selection = "None"
-                st.session_state.selected_single_file = None
-            selected_file = st.selectbox(
-                "Select File", 
-                file_options,
-                key="file_selector",
-                index=file_options.index(st.session_state.single_file_selection) if st.session_state.single_file_selection in file_options else 0
-            )
-            st.session_state.single_file_selection = selected_file if selected_file != "None" else "None"
-            st.session_state.selected_single_file = selected_file if selected_file != "None" else None
-            
-            # Reset Y-axis when switching files
-            if selected_file != st.session_state.get("previous_file", "None"):
-                # Clear Y-axis session state
-                # Clear X-axis session state when switching files
-                if "x_min_grid_mmss" in st.session_state:
-                    del st.session_state["x_min_grid_mmss"]
-                if "x_max_grid_mmss" in st.session_state:
-                    del st.session_state["x_max_grid_mmss"]
-                if "x_min_grid" in st.session_state:
-                    del st.session_state["x_min_grid"]
-                if "x_max_grid" in st.session_state:
-                    del st.session_state["x_max_grid"]
-                if "reset_x_pressed" in st.session_state:
-                    del st.session_state["reset_x_pressed"]
-                st.session_state["previous_file"] = selected_file
-            if selected_file != "None" and st.session_state.uploaded_files:
-                try:
-                    file = [f for f in st.session_state.uploaded_files if f.name == selected_file][0]
-                    file.seek(0)
-                    st.session_state.selected_single_file_content = file.read()
-                    file.seek(0)
-                except Exception as e:
-                    st.error("Error loading file")
-            if selected_file == "None":
-                st.info("📋 Please select a file to begin Single File Analysis")
-                st.stop()
-            motor_type = None
-            file_ext = os.path.splitext(selected_file)[-1].lower() if selected_file != "None" else None
+            with col1:
+                file_options = ["None"] + [f.name for f in st.session_state.uploaded_files]
+                if st.session_state.single_file_selection not in file_options:
+                    st.session_state.single_file_selection = "None"
+                    st.session_state.selected_single_file = None
+                selected_file = st.selectbox(
+                    "Select File", 
+                    file_options,
+                    key="file_selector",
+                    index=file_options.index(st.session_state.single_file_selection) if st.session_state.single_file_selection in file_options else 0
+                )
+                st.session_state.single_file_selection = selected_file if selected_file != "None" else "None"
+                st.session_state.selected_single_file = selected_file if selected_file != "None" else None
+                
+                # Reset Y-axis when switching files
+                if selected_file != st.session_state.get("previous_file", "None"):
+                    # Clear Y-axis session state
+                    # Clear X-axis session state when switching files
+                    if "x_min_grid_mmss" in st.session_state:
+                        del st.session_state["x_min_grid_mmss"]
+                    if "x_max_grid_mmss" in st.session_state:
+                        del st.session_state["x_max_grid_mmss"]
+                    if "x_min_grid" in st.session_state:
+                        del st.session_state["x_min_grid"]
+                    if "x_max_grid" in st.session_state:
+                        del st.session_state["x_max_grid"]
+                    if "reset_x_pressed" in st.session_state:
+                        del st.session_state["reset_x_pressed"]
+                    st.session_state["previous_file"] = selected_file
+                if selected_file != "None" and st.session_state.uploaded_files:
+                    try:
+                        file = [f for f in st.session_state.uploaded_files if f.name == selected_file][0]
+                        file.seek(0)
+                        st.session_state.selected_single_file_content = file.read()
+                        file.seek(0)
+                    except Exception as e:
+                        st.error("Error loading file")
+                if selected_file == "None":
+                    st.info("📋 Please select a file to begin Single File Analysis")
+                    st.stop()
+                motor_type = None
+                file_ext = os.path.splitext(selected_file)[-1].lower() if selected_file != "None" else None
             with col_mid:
                 if file_ext == ".ulg":
                     motor_type = st.radio(
@@ -887,8 +888,7 @@ def main():
             topic_options = []
             loaded_data = None
             with col2:
-                pass  # Keep col2 for future use or UI symmetry
-            if selected_file != "None":
+                if selected_file != "None":
                 file_content = st.session_state.get('selected_single_file_content')
                 if file_content:
                     with tempfile.NamedTemporaryFile(delete=False, suffix=file_ext) as tmp_file:
@@ -914,20 +914,20 @@ def main():
                                 os.unlink(tmp_file.name)
                             except:
                                 pass
-            if file_ext == ".ulg":
-                selected_topic = st.selectbox(
-                    "Select Topic",
-                    topic_options,
-                    key="ulg_topic_single"
-                )
-            else:
-                selected_topics = st.multiselect(
-                    "Select up to 4 columns to plot",
-                    topic_options,
-                    default=topic_options[:1],
-                    max_selections=4,
-                    key="multi_col_select"
-                )
+                if file_ext == ".ulg":
+                    selected_topic = st.selectbox(
+                        "Select Topic",
+                        topic_options,
+                        key="ulg_topic_single"
+                    )
+                else:
+                    selected_topics = st.multiselect(
+                        "Select up to 4 columns to plot",
+                        topic_options,
+                        default=topic_options[:1],
+                        max_selections=4,
+                        key="multi_col_select"
+                    )
             # Prepare data for plotting
             plot_data = []
             filtered_dfs_for_data_tab = []
