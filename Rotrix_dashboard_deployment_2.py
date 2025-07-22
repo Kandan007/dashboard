@@ -1199,28 +1199,28 @@ def main():
                                                 st.info("No abnormal data points found for this plot")
                                         
                                         st.markdown("---")
-                        else:
-                            st.markdown("""
-                            <div style='background-color: #d4edda; border: 1px solid #c3e6cb; border-radius: 8px; padding: 12px; margin: 8px 0;'>
-                                <div style='font-weight: bold; color: #155724;'>
-                                    ✅ No Abnormal Points Detected
+                                else:
+                                    st.markdown("""
+                                    <div style='background-color: #d4edda; border: 1px solid #c3e6cb; border-radius: 8px; padding: 12px; margin: 8px 0;'>
+                                        <div style='font-weight: bold; color: #155724;'>
+                                            ✅ No Abnormal Points Detected
+                                        </div>
+                                        <div style='font-size: 0.9em; color: #0f5132; margin-top: 4px;'>
+                                            All data points are within normal range (Z-Score ≤ {z_threshold})
+                                        </div>
+                                    </div>
+                                    """.format(z_threshold=z_threshold), unsafe_allow_html=True)
+                            else:
+                                st.markdown("""
+                                <div style='background-color: #f8d7da; border: 1px solid #f5c6cb; border-radius: 8px; padding: 12px; margin: 8px 0;'>
+                                    <div style='font-weight: bold; color: #721c24;'>
+                                        ⚠️ No Data Available
+                                    </div>
+                                    <div style='font-size: 0.9em; color: #721c24; margin-top: 4px;'>
+                                        Please select a file and topic to analyze
+                                    </div>
                                 </div>
-                                <div style='font-size: 0.9em; color: #0f5132; margin-top: 4px;'>
-                                    All data points are within normal range (Z-Score ≤ {z_threshold})
-                                </div>
-                            </div>
-                            """.format(z_threshold=z_threshold), unsafe_allow_html=True)
-                    else:
-                        st.markdown("""
-                        <div style='background-color: #f8d7da; border: 1px solid #f5c6cb; border-radius: 8px; padding: 12px; margin: 8px 0;'>
-                            <div style='font-weight: bold; color: #721c24;'>
-                                ⚠️ No Data Available
-                            </div>
-                            <div style='font-size: 0.9em; color: #721c24; margin-top: 4px;'>
-                                Please select a file and topic to analyze
-                            </div>
-                        </div>
-                        """, unsafe_allow_html=True)
+                                """, unsafe_allow_html=True)
                         
                 with plot_col:
                     # Plot grid size based on motor type and user selection
