@@ -1414,552 +1414,562 @@ def main():
                             st.dataframe(summary_stats, use_container_width=True)
 
                 else:  # Comparative Analysis
-            # Add safety check for mode switching
-            if st.session_state.mode_switched:
-                st.session_state.mode_switched = False
-                st.session_state.switch_timestamp = None
-            
-            # Show guidance message if no files are selected
-            if not st.session_state.get('selected_bench') or not st.session_state.get('selected_val'):
-                st.info("📋 Please select both Benchmark and Target files to begin Comparative Analysis")
-                st.stop()
-            
-            if st.session_state.get('selected_bench') and st.session_state.get('selected_val'):
-                # Initialize variables
-                b_df = None
-                v_df = None
-                b_file_ext = None
-                v_file_ext = None
-                b_dfs = {}
-                v_dfs = {}
-                selected_bench = st.session_state.get('selected_bench', "None")
-                selected_val = st.session_state.get('selected_val', "None")
-                selected_assessment = st.session_state.get('selected_assessment', "None")
-
-                # Initialize benchmark variables
-                selected_bench = st.session_state.get('selected_bench', "None")
-                b_content = st.session_state.get('selected_bench_content')
-                
-                # Process benchmark file
-                if selected_bench != "None" and b_content:
-                    b_file_ext = None
-                    tmp_file = None
-                    try:
-                        b_file_ext = os.path.splitext(selected_bench)[-1].lower()
-                        tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=b_file_ext)
-                        if isinstance(b_content, str):
-                            tmp_file.write(b_content.encode('utf-8'))
-                        else:
-                            tmp_file.write(b_content)
-                        tmp_file.flush()
-                        tmp_file.close()
-                        
-                        if b_file_ext == ".ulg":
-                            b_dfs, b_topics = load_ulog(tmp_file.name)
-                        else:
-                            df, _ = load_data(tmp_file.name, b_file_ext, key_suffix="bench")
-                            if df is not None and isinstance(df, pd.DataFrame) and len(df.index) > 0:
-                                b_df = df
-                                st.session_state.b_df = df
-                    except Exception as e:
-                        st.error(f"Error processing benchmark file: {str(e)}")
-                    finally:
-                        if tmp_file:
-                            try:
-                                os.unlink(tmp_file.name)
-                            except:
-                                pass
-
-    # Initialize validation variables
-    selected_val = st.session_state.get('selected_val', "None")
-    v_content = st.session_state.get('selected_val_content')
-    
-    # Process validation file
-    if selected_val != "None" and v_content:
-        v_file_ext = None
-        tmp_file = None
-        try:
-            v_file_ext = os.path.splitext(selected_val)[-1].lower()
-            tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=v_file_ext)
-            if isinstance(v_content, str):
-                tmp_file.write(v_content.encode('utf-8'))
-            else:
-                tmp_file.write(v_content)
-            tmp_file.flush()
-            tmp_file.close()
-            
-            if v_file_ext == ".ulg":
-                v_dfs, v_topics = load_ulog(tmp_file.name)
-            else:
-                df, _ = load_data(tmp_file.name, v_file_ext, key_suffix="val")
-                if df is not None and isinstance(df, pd.DataFrame) and len(df.index) > 0:
-                    v_df = df
-                    st.session_state.v_df = df
-        except Exception as e:
-            st.error(f"Error processing target file: {str(e)}")
-        finally:
-            if tmp_file:
-                try:
-                    os.unlink(tmp_file.name)
-                except:
-                    pass
-            
-    # Show topic selection only after both ULG files are selected
-    if (selected_bench != "None" and selected_val != "None" and 
-        b_file_ext == ".ulg" and v_file_ext == ".ulg"):
-        
-        assessment_names = ["None"] + [a for _, a in TOPIC_ASSESSMENT_PAIRS]
-        assessment_to_topic = {a: t for t, a in TOPIC_ASSESSMENT_PAIRS}
-        
-        # Get the topic selected from home page
-        default_assessment = st.session_state.get('selected_assessment')
-        
-        # If we have a valid topic from home page, use it directly
-        if default_assessment and default_assessment != "None":
-            selected_topic = assessment_to_topic.get(str(default_assessment))
-            if selected_topic:
-                if selected_topic in b_dfs and selected_topic in v_dfs:
-                    b_df = b_dfs[selected_topic]
-                    v_df = v_dfs[selected_topic]
-                    st.session_state.b_df = b_dfs[selected_topic]
-                    st.session_state.v_df = v_dfs[selected_topic]
-                else:
-                    st.warning(f"⚠️ Topic '{selected_topic}' not found in one or both files")
-        
-        # Show topic selection dropdown with default from home page
-        # st.markdown("<h3 style='font-size: 20px;'>📊 Analysis Topic</h3>", unsafe_allow_html=True)
-        
-        # Handle default topic selection
-        default_index = 0  # Default to "None"
-        if isinstance(default_assessment, str) and default_assessment in assessment_names:
-            default_index = assessment_names.index(default_assessment)
-        
-        # Update data if topic is changed
-        if selected_assessment != "None" and selected_assessment != default_assessment:
-            selected_topic = assessment_to_topic.get(str(selected_assessment))
-            if selected_topic:
-                if selected_topic in b_dfs and selected_topic in v_dfs:
-                    b_df = b_dfs[selected_topic]
-                    v_df = v_dfs[selected_topic]
-                    st.session_state.b_df = b_dfs[selected_topic]
-                    st.session_state.v_df = v_dfs[selected_topic]
-                    # Update session state with new topic
-                    st.session_state.selected_assessment = selected_assessment
-                else:
-                    st.warning(f"⚠️ Topic '{selected_topic}' not found in one or both files")
-    elif selected_bench != "None" and selected_val != "None":
-        # For non-ULG files, get data from session state
-        b_df = st.session_state.get("b_df", None)
-        v_df = st.session_state.get("v_df", None)
-
-    # Show analysis tabs only if both files are loaded and selected
-    if st.session_state.get('selected_bench') and st.session_state.get('selected_val'):
-        
-        def reset_x_comparative_callback(dataframe, axis):
-            if dataframe is not None and axis in dataframe.columns:
-                if axis == 'timestamp_seconds':
-                    st.session_state.x_min_comparative_mmss = seconds_to_mmss(float(dataframe[axis].min()))
-                    st.session_state.x_max_comparative_mmss = seconds_to_mmss(float(dataframe[axis].max()))
-                else:
-                    st.session_state.x_min_comparative = float(dataframe[axis].min())
-                    st.session_state.x_max_comparative = float(dataframe[axis].max())
-                if 'x_min_comparative_mmss' in st.session_state and axis != 'timestamp_seconds': del st.session_state['x_min_comparative_mmss']
-                if 'x_max_comparative_mmss' in st.session_state and axis != 'timestamp_seconds': del st.session_state['x_max_comparative_mmss']
-
-        def reset_y_comparative_callback(dataframe, axis):
-            if dataframe is not None and axis in dataframe.columns:
-                st.session_state.y_min_comparative = float(dataframe[axis].min())
-                st.session_state.y_max_comparative = float(dataframe[axis].max())
-
-        tab1, tab2 = st.tabs(["📊 Plot", "📋 Data"])
-        
-        # Data Tab
-        with tab2:
-            # Create a 20-80 split layout
-            data_col, settings_col = st.columns([0.8, 0.2])
-            
-            with settings_col:
-                # Add dataset selector and column management
-                # st.markdown("<h3 style='font-size: 20px;'>📋 Data Preview</h3>", unsafe_allow_html=True)
-                st.markdown("<h5 style='font-size: 16px;'>🔧 Column Management</h5>", unsafe_allow_html=True)
-                dataset_choice = st.selectbox(
-                    "Select Dataset to Edit",
-                    ["Benchmark", "Target", "Both"],
-                    key="dataset_selector"
-                )
-                
-                # Column management based on selection
-                if isinstance(b_df, pd.DataFrame) and isinstance(v_df, pd.DataFrame):
-                    if dataset_choice == "Benchmark":
-                        st.markdown("**Editing Benchmark Dataset**")
-                        b_df = add_remove_column(b_df, "Benchmark")
-                    elif dataset_choice == "Target":
-                        st.markdown("**Editing Target Dataset**")
-                        v_df = add_remove_column(v_df, "Target")
-                    else:  # Both
-                        st.markdown("**Editing Both Datasets**")
-                        with st.expander("Common Column Operations"):
-                            b_df, v_df = add_remove_common_column(b_df, v_df)
-            
-            with data_col:
-                col1, col2 = st.columns(2)
-                
-                with col1:
-                    st.markdown("<h4 style='font-size: 18px;'>Benchmark Data</h4>", unsafe_allow_html=True)
-                    if isinstance(b_df, pd.DataFrame):
-                        # Add Index if not present
-                        if 'Index' not in b_df.columns:
-                            b_df.insert(0, 'Index', range(1, len(b_df) + 1))
-                        
-                        # Ensure timestamp_seconds is present
-                        b_df = ensure_seconds_column(b_df)
-                        
-                        # Get display columns
-                        display_cols = ['Index']
-                        if 'timestamp_seconds' in b_df.columns:
-                            display_cols.append('timestamp_seconds')
-                        
-                        # For ULG files with selected assessment
-                        if b_file_ext == ".ulg" and selected_assessment and selected_assessment != "None":
-                            # Add columns from assessment map
-                            if selected_assessment in ASSESSMENT_Y_AXIS_MAP:
-                                assessment_cols = ASSESSMENT_Y_AXIS_MAP[selected_assessment]
-                                display_cols.extend([col for col in assessment_cols if col in b_df.columns])
-                        else:
-                            # Add all numeric columns
-                            numeric_cols = [col for col in b_df.columns if pd.api.types.is_numeric_dtype(b_df[col]) 
-                                          and col not in display_cols]
-                            display_cols.extend(numeric_cols)
-                        
-                        # Display DataFrame with selected columns
-                        st.dataframe(
-                            b_df[list(dict.fromkeys(display_cols))].rename(columns=COLUMN_DISPLAY_NAMES),
-                            use_container_width=True,
-                            height=600
-                        )
-                    elif isinstance(b_df, dict):
-                        # Handle dictionary of DataFrames (ULog case)
-                        if selected_assessment and selected_assessment != "None":
-                            selected_topic = assessment_to_topic.get(str(selected_assessment))
-                            if selected_topic and selected_topic in b_df:
-                                df_to_display = b_df[selected_topic]
-                                if isinstance(df_to_display, pd.DataFrame):
-                                    # Add Index if not present
-                                    if 'Index' not in df_to_display.columns:
-                                        df_to_display.insert(0, 'Index', range(1, len(df_to_display) + 1))
-                                    
-                                    # Ensure timestamp_seconds is present
-                                    df_to_display = ensure_seconds_column(df_to_display)
-                                    
-                                    # Get display columns
-                                    display_cols = ['Index']
-                                    if 'timestamp_seconds' in df_to_display.columns:
-                                        display_cols.append('timestamp_seconds')
-                                    
-                                    # Add columns from assessment map
-                                    if selected_assessment in ASSESSMENT_Y_AXIS_MAP:
-                                        assessment_cols = ASSESSMENT_Y_AXIS_MAP[selected_assessment]
-                                        display_cols.extend([col for col in assessment_cols if col in df_to_display.columns])
-                                    
-                                    # Display DataFrame with selected columns
-                                    st.dataframe(
-                                        df_to_display[list(dict.fromkeys(display_cols))].rename(columns=COLUMN_DISPLAY_NAMES),
-                                        use_container_width=True,
-                                        height=600
-                                    )
-                                else:
-                                    st.warning("⚠️ Selected topic data is not in the correct format")
-                            else:
-                                st.warning("⚠️ Selected topic not found in the data")
-                        else:
-                            st.info("📋 Please select a topic to view the data")
-                    else:
-                        st.warning("⚠️ Benchmark data not properly loaded")
-                
-                with col2:
-                    st.markdown("<h4 style='font-size: 18px;'>Target Data</h4>", unsafe_allow_html=True)
-                    if isinstance(v_df, pd.DataFrame):
-                        # Add Index if not present
-                        if 'Index' not in v_df.columns:
-                            v_df.insert(0, 'Index', range(1, len(v_df) + 1))
-                        
-                        # Ensure timestamp_seconds is present
-                        v_df = ensure_seconds_column(v_df)
-                        
-                        # Get display columns
-                        display_cols = ['Index']
-                        if 'timestamp_seconds' in v_df.columns:
-                            display_cols.append('timestamp_seconds')
-                        
-                        # For ULG files with selected assessment
-                        if v_file_ext == ".ulg" and selected_assessment and selected_assessment != "None":
-                            # Add columns from assessment map
-                            if selected_assessment in ASSESSMENT_Y_AXIS_MAP:
-                                assessment_cols = ASSESSMENT_Y_AXIS_MAP[selected_assessment]
-                                display_cols.extend([col for col in assessment_cols if col in v_df.columns])
-                        else:
-                            # Add all numeric columns
-                            numeric_cols = [col for col in v_df.columns if pd.api.types.is_numeric_dtype(v_df[col]) 
-                                          and col not in display_cols]
-                            display_cols.extend(numeric_cols)
-                        
-                        # Display DataFrame with selected columns
-                        st.dataframe(
-                            v_df[list(dict.fromkeys(display_cols))].rename(columns=COLUMN_DISPLAY_NAMES),
-                            use_container_width=True,
-                            height=600
-                        )
-                    elif isinstance(v_df, dict):
-                        # Handle dictionary of DataFrames (ULog case)
-                        if selected_assessment and selected_assessment != "None":
-                            selected_topic = assessment_to_topic.get(str(selected_assessment))
-                            if selected_topic and selected_topic in v_df:
-                                df_to_display = v_df[selected_topic]
-                                if isinstance(df_to_display, pd.DataFrame):
-                                    # Add Index if not present
-                                    if 'Index' not in df_to_display.columns:
-                                        df_to_display.insert(0, 'Index', range(1, len(df_to_display) + 1))
-                                    
-                                    # Ensure timestamp_seconds is present
-                                    df_to_display = ensure_seconds_column(df_to_display)
-                                    
-                                    # Get display columns
-                                    display_cols = ['Index']
-                                    if 'timestamp_seconds' in df_to_display.columns:
-                                        display_cols.append('timestamp_seconds')
-                                    
-                                    # Add columns from assessment map
-                                    if selected_assessment in ASSESSMENT_Y_AXIS_MAP:
-                                        assessment_cols = ASSESSMENT_Y_AXIS_MAP[selected_assessment]
-                                        display_cols.extend([col for col in assessment_cols if col in df_to_display.columns])
-                                    
-                                    # Display DataFrame with selected columns
-                                    st.dataframe(
-                                        df_to_display[list(dict.fromkeys(display_cols))].rename(columns=COLUMN_DISPLAY_NAMES),
-                                        use_container_width=True,
-                                        height=600
-                                    )
-                                else:
-                                    st.warning("⚠️ Selected topic data is not in the correct format")
-                            else:
-                                st.warning("⚠️ Selected topic not found in the data")
-                        else:
-                            st.info("📋 Please select a topic to view the data")
-                    else:
-                        st.warning("⚠️ Target data not properly loaded")
+                    # Add safety check for mode switching
+                    if st.session_state.mode_switched:
+                        st.session_state.mode_switched = False
+                        st.session_state.switch_timestamp = None
                     
-        # Plot Tab
-        with tab1:
-            # --- Metrics Row (Full Width) ---
-            b_df = st.session_state.get("b_df")
-            v_df = st.session_state.get("v_df")
-            metrics_ready = False
-            x_axis = y_axis = z_threshold = x_min = x_max = y_min = y_max = None
-            
-            x_axis_options = []
-            y_axis_options = []
-            default_x = None
-            default_y = None
+                    # Show guidance message if no files are selected
+                    if not st.session_state.get('selected_bench') or not st.session_state.get('selected_val'):
+                        st.info("📋 Please select both Benchmark and Target files to begin Comparative Analysis")
+                        st.stop()
+                    
+                    if st.session_state.get('selected_bench') and st.session_state.get('selected_val'):
+                        # Initialize variables
+                        b_df = None
+                        v_df = None
+                        b_file_ext = None
+                        v_file_ext = None
+                        b_dfs = {}
+                        v_dfs = {}
+                        selected_bench = st.session_state.get('selected_bench', "None")
+                        selected_val = st.session_state.get('selected_val', "None")
+                        selected_assessment = st.session_state.get('selected_assessment', "None")
 
-            if isinstance(b_df, pd.DataFrame) and isinstance(v_df, pd.DataFrame):
-                b_numeric = get_numeric_columns(b_df)
-                v_numeric = get_numeric_columns(v_df)
-                common_cols = list(set(b_numeric) & set(v_numeric))
-                ALLOWED_X_AXIS = ["Index", "timestamp_seconds"] + [col for col in common_cols if col not in ["Index", "timestamp_seconds"]]
-                if 'selected_assessment' in locals() and isinstance(selected_assessment, str) and selected_assessment != "None":
-                    allowed_y_axis = ASSESSMENT_Y_AXIS_MAP.get(selected_assessment, [])
-                    allowed_y_axis = [col for col in allowed_y_axis if col in b_df.columns]
-                    if not allowed_y_axis:
-                        allowed_y_axis = list(b_df.columns)
-                    allowed_y_axis = [col for col in allowed_y_axis if pd.api.types.is_numeric_dtype(b_df[col])]
-                    ALLOWED_X_AXIS = ["Index", "timestamp_seconds"] + [col for col in allowed_y_axis if col not in ["Index", "timestamp_seconds"]]
-                else:
-                    allowed_y_axis = [col for col in b_df.columns if pd.api.types.is_numeric_dtype(b_df[col])]
-                    ALLOWED_X_AXIS = ["Index", "timestamp_seconds"] + [col for col in allowed_y_axis if col not in ["Index", "timestamp_seconds"]]
-                x_axis_options = ALLOWED_X_AXIS
-                y_axis_options = allowed_y_axis
-                if 'selected_assessment' in locals() and isinstance(selected_assessment, str) and selected_assessment != "None":
-                    default_x = 'timestamp_seconds' if 'timestamp_seconds' in x_axis_options else ('Index' if 'Index' in x_axis_options else x_axis_options[0])
-                else:
-                    default_x = 'Index' if 'Index' in x_axis_options else x_axis_options[0]
-                if b_df is not None and v_df is not None and hasattr(b_df, 'columns') and hasattr(v_df, 'columns'):
-                    is_csv_data = any(col in b_df.columns for col in ['Thrust (kgf)', 'cD2detailpeak', 'Thrust'])
-                    if is_csv_data:
-                        preferred_y_columns = ['Thrust (kgf)', 'cD2detailpeak', 'Thrust']
-                        for preferred_col in preferred_y_columns:
-                            if preferred_col in y_axis_options:
-                                default_y = preferred_col
-                                break
-                        else:
-                            default_y = y_axis_options[1] if y_axis_options else None
-                else:
-                    default_y = y_axis_options[0] if y_axis_options else None
-            metrics_col, param_col = st.columns([0.8, 0.2])
-            with param_col:
-                st.markdown("""
-                <div style='display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;'>
-                    <span style='font-size: 1.2rem;'>📝</span>
-                    <span style='font-size: 1.1rem; font-weight: 600;'>Parameters</span>
-                </div>
-                """, unsafe_allow_html=True)
-
-                prev_x_axis = st.session_state.get('prev_x_axis_comparative', None)
-                prev_y_axis = st.session_state.get('prev_y_axis_comparative', None)
-
-                x_axis_display_cmp = [get_display_name(col) for col in x_axis_options]
-                x_axis_selected_display_cmp = st.selectbox("X-Axis", x_axis_display_cmp, key="x_axis_comparative", index=x_axis_display_cmp.index(get_display_name(default_x)) if isinstance(default_x, str) and get_display_name(default_x) in x_axis_display_cmp else 0)
-                x_axis = x_axis_options[x_axis_display_cmp.index(x_axis_selected_display_cmp)]
-                y_axis_display_cmp = [get_display_name(col) for col in y_axis_options]
-                y_axis_selected_display_cmp = st.selectbox("Y-Axis", y_axis_display_cmp, key="y_axis_comparative", index=y_axis_display_cmp.index(get_display_name(default_y)) if isinstance(default_y, str) and get_display_name(default_y) in y_axis_display_cmp else 0)
-                y_axis = y_axis_options[y_axis_display_cmp.index(y_axis_selected_display_cmp)]
-
-                if 'last_x_axis_comparative' not in st.session_state or st.session_state['last_x_axis_comparative'] != x_axis:
-                    if x_axis == 'timestamp_seconds':
-                        if b_df is not None and x_axis in b_df.columns:
-                            x_min_val = float(b_df[x_axis].min())
-                            x_max_val = float(b_df[x_axis].max())
-                        elif v_df is not None and x_axis in v_df.columns:
-                            x_min_val = float(v_df[x_axis].min())
-                            x_max_val = float(v_df[x_axis].max())
-                        else:
-                            x_min_val, x_max_val = 0.0, 1.0
-                        st.session_state['x_min_comparative_mmss'] = seconds_to_mmss(x_min_val)
-                        st.session_state['x_max_comparative_mmss'] = seconds_to_mmss(x_max_val)
-                    else:
-                        if b_df is not None and x_axis in b_df.columns:
-                            x_min_val = float(b_df[x_axis].min())
-                            x_max_val = float(b_df[x_axis].max())
-                        elif v_df is not None and x_axis in v_df.columns:
-                            x_min_val = float(v_df[x_axis].min())
-                            x_max_val = float(v_df[x_axis].max())
-                        else:
-                            x_min_val, x_max_val = 0.0, 1.0
-                        st.session_state['x_min_comparative'] = x_min_val
-                        st.session_state['x_max_comparative'] = x_max_val
-                    st.session_state['last_x_axis_comparative'] = x_axis
-                if 'last_y_axis_comparative' not in st.session_state or st.session_state['last_y_axis_comparative'] != y_axis:
-                    if b_df is not None and y_axis in b_df.columns:
-                        y_min_val = float(b_df[y_axis].min())
-                        y_max_val = float(b_df[y_axis].max())
-                    elif v_df is not None and y_axis in v_df.columns:
-                        y_min_val = float(v_df[y_axis].min())
-                        y_max_val = float(v_df[y_axis].max())
-                    else:
-                        y_min_val, y_max_val = 0.0, 1.0
-                    st.session_state['y_min_comparative'] = y_min_val
-                    st.session_state['y_max_comparative'] = y_max_val
-                    st.session_state['last_y_axis_comparative'] = y_axis
-
-                st.session_state['prev_x_axis_comparative'] = x_axis
-                st.session_state['prev_y_axis_comparative'] = y_axis
-
-                z_threshold = st.slider("Z-Score Threshold", 1.0, 5.0, 2.5, 0.01, key="z-slider-comparative")
-                
-                # --- Combined Range Calculation ---
-                x_min_val, x_max_val, y_min_val, y_max_val = (0.0, 1.0, 0.0, 1.0)
-                if x_axis and y_axis:
-                    # Calculate combined X-axis range
-                    if b_df is not None and v_df is not None and x_axis in b_df.columns and x_axis in v_df.columns:
-                        x_min_val, x_max_val = (min(b_df[x_axis].min(), v_df[x_axis].min()), max(b_df[x_axis].max(), v_df[x_axis].max()))
-                    elif b_df is not None and x_axis in b_df.columns:
-                        x_min_val, x_max_val = (b_df[x_axis].min(), b_df[x_axis].max())
-                    elif v_df is not None and x_axis in v_df.columns:
-                        x_min_val, x_max_val = (v_df[x_axis].min(), v_df[x_axis].max())
-
-                    # Calculate combined Y-axis range
-                    if b_df is not None and v_df is not None and y_axis in b_df.columns and y_axis in v_df.columns:
-                        y_min_val, y_max_val = (min(b_df[y_axis].min(), v_df[y_axis].min()), max(b_df[y_axis].max(), v_df[y_axis].max()))
-                    elif b_df is not None and y_axis in b_df.columns:
-                        y_min_val, y_max_val = (b_df[y_axis].min(), b_df[y_axis].max())
-                    elif v_df is not None and y_axis in v_df.columns:
-                        y_min_val, y_max_val = (v_df[y_axis].min(), v_df[y_axis].max())
-
-                st.markdown(f"<span style='font-size:1.05rem; color:#444; font-weight:500;'>{'Time' if x_axis == 'timestamp_seconds' else x_axis}</span>", unsafe_allow_html=True)
-                x_min_col, x_max_col, x_reset_col = st.columns([6, 6, 2])
-                with x_min_col:
-                    if x_axis == 'timestamp_seconds':
-                        x_min_mmss = seconds_to_mmss(x_min_val)
-                        if 'x_min_comparative_mmss' not in st.session_state:
-                            st.session_state['x_min_comparative_mmss'] = x_min_mmss
-                        x_min_input = st.text_input("Start", value=st.session_state['x_min_comparative_mmss'], key='x_min_comparative_mmss')
-                        x_min = mmss_to_seconds(x_min_input)
-                    else:
-                        if 'x_min_comparative' not in st.session_state:
-                            st.session_state['x_min_comparative'] = float(x_min_val)
-                        x_min = st.number_input("Start", value=st.session_state['x_min_comparative'], format="%.2f", key="x_min_comparative", step=1.0)
-                with x_max_col:
-                    if x_axis == 'timestamp_seconds':
-                        x_max_mmss = seconds_to_mmss(x_max_val)
-                        if 'x_max_comparative_mmss' not in st.session_state:
-                            st.session_state['x_max_comparative_mmss'] = x_max_mmss
-                        x_max_input = st.text_input("End", value=st.session_state['x_max_comparative_mmss'], key='x_max_comparative_mmss')
-                        x_max = mmss_to_seconds(x_max_input)
-                    else:
-                        if 'x_max_comparative' not in st.session_state:
-                            st.session_state['x_max_comparative'] = float(x_max_val)
-                        x_max = st.number_input("End", value=st.session_state['x_max_comparative'], format="%.2f", key="x_max_comparative", step=1.0)
-                with x_reset_col:
-                    st.markdown('<div style="margin-top: 28px;"></div>', unsafe_allow_html=True)
-                    if st.button("↺", key="reset_x_comparative", help="Reset X-axis range", on_click=reset_x_comparative_callback, args=(b_df, x_axis)):
-                        for k in ['x_min_comparative', 'x_max_comparative', 'x_min_comparative_mmss', 'x_max_comparative_mmss']:
-                            if k in st.session_state:
-                                del st.session_state[k]
-                        st.rerun()
-
-                st.markdown(f"<span style='font-size:1.05rem; color:#444; font-weight:500;'>{y_axis}</span>", unsafe_allow_html=True)
-                y_min_col, y_max_col, y_reset_col = st.columns([6, 6, 2])
-                with y_min_col:
-                    if 'y_min_comparative' not in st.session_state:
-                        st.session_state['y_min_comparative'] = float(y_min_val)
-                    y_min = st.number_input("Start", value=st.session_state['y_min_comparative'], format="%.2f", key="y_min_comparative", step=1.0)
-                with y_max_col:
-                    if 'y_max_comparative' not in st.session_state:
-                        st.session_state['y_max_comparative'] = float(y_max_val)
-                    y_max = st.number_input("End", value=st.session_state['y_max_comparative'], format="%.2f", key="y_max_comparative", step=1.0)
-                with y_reset_col:
-                    st.markdown('<div style="margin-top: 28px;"></div>', unsafe_allow_html=True)
-                    if st.button("↺", key="reset_y_comparative", help="Reset Y-axis range", on_click=reset_y_comparative_callback, args=(b_df, y_axis)):
-                        for k in ['y_min_comparative', 'y_max_comparative']:
-                            if k in st.session_state:
-                                del st.session_state[k]
-                        st.rerun()
-            with metrics_col:
-                # Calculate metrics based on current parameters
-                if (b_df is not None and v_df is not None and x_axis in b_df.columns and y_axis in b_df.columns and 
-                    x_axis in v_df.columns and y_axis in v_df.columns and 
-                    None not in (x_min, x_max, y_min, y_max)):
-                    try:
-                        b_filtered = b_df[(b_df[x_axis] >= x_min) & (b_df[x_axis] <= x_max) & (b_df[y_axis] >= y_min) & (b_df[y_axis] <= y_max)]
-                        v_filtered = v_df[(v_df[x_axis] >= x_min) & (v_df[x_axis] <= x_max) & (v_df[y_axis] >= y_min) & (v_df[y_axis] <= y_max)]
+                        # Initialize benchmark variables
+                        selected_bench = st.session_state.get('selected_bench', "None")
+                        b_content = st.session_state.get('selected_bench_content')
                         
-                        if len(b_filtered) > 0 and len(v_filtered) > 0:
-                            if x_axis == 'timestamp_seconds':
-                                b_filtered, v_filtered, _ = resample_to_common_time(b_filtered, v_filtered)
-                            
-                            if len(b_filtered) > 0 and len(v_filtered) > 0:
-                                merged = pd.DataFrame()
-                                merged['benchmark'] = b_filtered[y_axis].reset_index(drop=True)
-                                merged['target'] = v_filtered[y_axis].reset_index(drop=True)
-                                merged['benchmark_x'] = b_filtered[x_axis].reset_index(drop=True)
-                                merged['target_x'] = v_filtered[x_axis].reset_index(drop=True)
-                                merged['abs_diff'] = abs(merged['target'] - merged['benchmark'])
-                                merged['rel_diff'] = merged['abs_diff'] / (abs(merged['benchmark']) + 1e-10)
-                                window = min(50, max(20, len(merged) // 10))
-                                merged['rolling_mean'] = merged['abs_diff'].rolling(window=window, center=True).mean()
-                                merged['rolling_std'] = merged['abs_diff'].rolling(window=window, center=True).std()
-                                rmse = np.sqrt(np.mean((merged['target'] - merged['benchmark']) ** 2))
-                                # Use combined range of both datasets for symmetric similarity calculation
-                                combined_range = max(merged['benchmark'].max(), merged['target'].max()) - min(merged['benchmark'].min(), merged['target'].min())
-                                similarity = 1 - (rmse / combined_range) if combined_range != 0 else (1.0 if rmse == 0 else 0.0)
-                                similarity_index = similarity * 100
-                                merged["Difference"] = merged['target'] - merged['benchmark']
-                                merged["Z_Score"] = (merged["Difference"] - merged["Difference"].mean()) / merged["Difference"].std()
-                                merged = merged.reset_index(drop=True)
-                                abnormal_mask = abs(merged["Z_Score"]) > z_threshold
-                                abnormal_points = merged[abnormal_mask]
-                                abnormal_count = int(abnormal_mask.sum())
-                                metrics_ready = True
+                        # Process benchmark file
+                        if selected_bench != "None" and b_content:
+                            b_file_ext = None
+                            tmp_file = None
+                            try:
+                                b_file_ext = os.path.splitext(selected_bench)[-1].lower()
+                                tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=b_file_ext)
+                                if isinstance(b_content, str):
+                                    tmp_file.write(b_content.encode('utf-8'))
+                                else:
+                                    tmp_file.write(b_content)
+                                tmp_file.flush()
+                                tmp_file.close()
+                                
+                                if b_file_ext == ".ulg":
+                                    b_dfs, b_topics = load_ulog(tmp_file.name)
+                                else:
+                                    df, _ = load_data(tmp_file.name, b_file_ext, key_suffix="bench")
+                                    if df is not None and isinstance(df, pd.DataFrame) and len(df.index) > 0:
+                                        b_df = df
+                                        st.session_state.b_df = df
+                            except Exception as e:
+                                st.error(f"Error processing benchmark file: {str(e)}")
+                            finally:
+                                if tmp_file:
+                                    try:
+                                        os.unlink(tmp_file.name)
+                                    except:
+                                        pass
+
+            # Initialize validation variables
+            selected_val = st.session_state.get('selected_val', "None")
+            v_content = st.session_state.get('selected_val_content')
+            
+            # Process validation file
+            if selected_val != "None" and v_content:
+                v_file_ext = None
+                tmp_file = None
+                try:
+                    v_file_ext = os.path.splitext(selected_val)[-1].lower()
+                    tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=v_file_ext)
+                    if isinstance(v_content, str):
+                        tmp_file.write(v_content.encode('utf-8'))
+                    else:
+                        tmp_file.write(v_content)
+                    tmp_file.flush()
+                    tmp_file.close()
+                    
+                    if v_file_ext == ".ulg":
+                        v_dfs, v_topics = load_ulog(tmp_file.name)
+                    else:
+                        df, _ = load_data(tmp_file.name, v_file_ext, key_suffix="val")
+                        if df is not None and isinstance(df, pd.DataFrame) and len(df.index) > 0:
+                            v_df = df
+                            st.session_state.v_df = df
+                except Exception as e:
+                    st.error(f"Error processing target file: {str(e)}")
+                finally:
+                    if tmp_file:
+                        try:
+                            os.unlink(tmp_file.name)
+                        except:
+                            pass
+                    
+            # Show topic selection only after both ULG files are selected
+            if (selected_bench != "None" and selected_val != "None" and 
+                b_file_ext == ".ulg" and v_file_ext == ".ulg"):
+                
+                assessment_names = ["None"] + [a for _, a in TOPIC_ASSESSMENT_PAIRS]
+                assessment_to_topic = {a: t for t, a in TOPIC_ASSESSMENT_PAIRS}
+                
+                # Get the topic selected from home page
+                default_assessment = st.session_state.get('selected_assessment')
+                
+                # If we have a valid topic from home page, use it directly
+                if default_assessment and default_assessment != "None":
+                    selected_topic = assessment_to_topic.get(str(default_assessment))
+                    if selected_topic:
+                        if selected_topic in b_dfs and selected_topic in v_dfs:
+                            b_df = b_dfs[selected_topic]
+                            v_df = v_dfs[selected_topic]
+                            st.session_state.b_df = b_dfs[selected_topic]
+                            st.session_state.v_df = v_dfs[selected_topic]
+                        else:
+                            st.warning(f"⚠️ Topic '{selected_topic}' not found in one or both files")
+                
+                # Show topic selection dropdown with default from home page
+                # st.markdown("<h3 style='font-size: 20px;'>📊 Analysis Topic</h3>", unsafe_allow_html=True)
+                
+                # Handle default topic selection
+                default_index = 0  # Default to "None"
+                if isinstance(default_assessment, str) and default_assessment in assessment_names:
+                    default_index = assessment_names.index(default_assessment)
+                
+                # Update data if topic is changed
+                if selected_assessment != "None" and selected_assessment != default_assessment:
+                    selected_topic = assessment_to_topic.get(str(selected_assessment))
+                    if selected_topic:
+                        if selected_topic in b_dfs and selected_topic in v_dfs:
+                            b_df = b_dfs[selected_topic]
+                            v_df = v_dfs[selected_topic]
+                            st.session_state.b_df = b_dfs[selected_topic]
+                            st.session_state.v_df = v_dfs[selected_topic]
+                            # Update session state with new topic
+                            st.session_state.selected_assessment = selected_assessment
+                        else:
+                            st.warning(f"⚠️ Topic '{selected_topic}' not found in one or both files")
+            elif selected_bench != "None" and selected_val != "None":
+                # For non-ULG files, get data from session state
+                b_df = st.session_state.get("b_df", None)
+                v_df = st.session_state.get("v_df", None)
+
+            # Show analysis tabs only if both files are loaded and selected
+            if st.session_state.get('selected_bench') and st.session_state.get('selected_val'):
+                
+                def reset_x_comparative_callback(dataframe, axis):
+                    if dataframe is not None and axis in dataframe.columns:
+                        if axis == 'timestamp_seconds':
+                            st.session_state.x_min_comparative_mmss = seconds_to_mmss(float(dataframe[axis].min()))
+                            st.session_state.x_max_comparative_mmss = seconds_to_mmss(float(dataframe[axis].max()))
+                        else:
+                            st.session_state.x_min_comparative = float(dataframe[axis].min())
+                            st.session_state.x_max_comparative = float(dataframe[axis].max())
+                        if 'x_min_comparative_mmss' in st.session_state and axis != 'timestamp_seconds': del st.session_state['x_min_comparative_mmss']
+                        if 'x_max_comparative_mmss' in st.session_state and axis != 'timestamp_seconds': del st.session_state['x_max_comparative_mmss']
+
+                def reset_y_comparative_callback(dataframe, axis):
+                    if dataframe is not None and axis in dataframe.columns:
+                        st.session_state.y_min_comparative = float(dataframe[axis].min())
+                        st.session_state.y_max_comparative = float(dataframe[axis].max())
+
+                tab1, tab2 = st.tabs(["📊 Plot", "📋 Data"])
+                
+                # Data Tab
+                with tab2:
+                    # Create a 20-80 split layout
+                    data_col, settings_col = st.columns([0.8, 0.2])
+                    
+                    with settings_col:
+                        # Add dataset selector and column management
+                        # st.markdown("<h3 style='font-size: 20px;'>📋 Data Preview</h3>", unsafe_allow_html=True)
+                        st.markdown("<h5 style='font-size: 16px;'>🔧 Column Management</h5>", unsafe_allow_html=True)
+                        dataset_choice = st.selectbox(
+                            "Select Dataset to Edit",
+                            ["Benchmark", "Target", "Both"],
+                            key="dataset_selector"
+                        )
+                        
+                        # Column management based on selection
+                        if isinstance(b_df, pd.DataFrame) and isinstance(v_df, pd.DataFrame):
+                            if dataset_choice == "Benchmark":
+                                st.markdown("**Editing Benchmark Dataset**")
+                                b_df = add_remove_column(b_df, "Benchmark")
+                            elif dataset_choice == "Target":
+                                st.markdown("**Editing Target Dataset**")
+                                v_df = add_remove_column(v_df, "Target")
+                            else:  # Both
+                                st.markdown("**Editing Both Datasets**")
+                                with st.expander("Common Column Operations"):
+                                    b_df, v_df = add_remove_common_column(b_df, v_df)
+                    
+                    with data_col:
+                        col1, col2 = st.columns(2)
+                        
+                        with col1:
+                            st.markdown("<h4 style='font-size: 18px;'>Benchmark Data</h4>", unsafe_allow_html=True)
+                            if isinstance(b_df, pd.DataFrame):
+                                # Add Index if not present
+                                if 'Index' not in b_df.columns:
+                                    b_df.insert(0, 'Index', range(1, len(b_df) + 1))
+                                
+                                # Ensure timestamp_seconds is present
+                                b_df = ensure_seconds_column(b_df)
+                                
+                                # Get display columns
+                                display_cols = ['Index']
+                                if 'timestamp_seconds' in b_df.columns:
+                                    display_cols.append('timestamp_seconds')
+                                
+                                # For ULG files with selected assessment
+                                if b_file_ext == ".ulg" and selected_assessment and selected_assessment != "None":
+                                    # Add columns from assessment map
+                                    if selected_assessment in ASSESSMENT_Y_AXIS_MAP:
+                                        assessment_cols = ASSESSMENT_Y_AXIS_MAP[selected_assessment]
+                                        display_cols.extend([col for col in assessment_cols if col in b_df.columns])
+                                else:
+                                    # Add all numeric columns
+                                    numeric_cols = [col for col in b_df.columns if pd.api.types.is_numeric_dtype(b_df[col]) 
+                                                and col not in display_cols]
+                                    display_cols.extend(numeric_cols)
+                                
+                                # Display DataFrame with selected columns
+                                st.dataframe(
+                                    b_df[list(dict.fromkeys(display_cols))].rename(columns=COLUMN_DISPLAY_NAMES),
+                                    use_container_width=True,
+                                    height=600
+                                )
+                            elif isinstance(b_df, dict):
+                                # Handle dictionary of DataFrames (ULog case)
+                                if selected_assessment and selected_assessment != "None":
+                                    selected_topic = assessment_to_topic.get(str(selected_assessment))
+                                    if selected_topic and selected_topic in b_df:
+                                        df_to_display = b_df[selected_topic]
+                                        if isinstance(df_to_display, pd.DataFrame):
+                                            # Add Index if not present
+                                            if 'Index' not in df_to_display.columns:
+                                                df_to_display.insert(0, 'Index', range(1, len(df_to_display) + 1))
+                                            
+                                            # Ensure timestamp_seconds is present
+                                            df_to_display = ensure_seconds_column(df_to_display)
+                                            
+                                            # Get display columns
+                                            display_cols = ['Index']
+                                            if 'timestamp_seconds' in df_to_display.columns:
+                                                display_cols.append('timestamp_seconds')
+                                            
+                                            # Add columns from assessment map
+                                            if selected_assessment in ASSESSMENT_Y_AXIS_MAP:
+                                                assessment_cols = ASSESSMENT_Y_AXIS_MAP[selected_assessment]
+                                                display_cols.extend([col for col in assessment_cols if col in df_to_display.columns])
+                                            
+                                            # Display DataFrame with selected columns
+                                            st.dataframe(
+                                                df_to_display[list(dict.fromkeys(display_cols))].rename(columns=COLUMN_DISPLAY_NAMES),
+                                                use_container_width=True,
+                                                height=600
+                                            )
+                                        else:
+                                            st.warning("⚠️ Selected topic data is not in the correct format")
+                                    else:
+                                        st.warning("⚠️ Selected topic not found in the data")
+                                else:
+                                    st.info("📋 Please select a topic to view the data")
                             else:
+                                st.warning("⚠️ Benchmark data not properly loaded")
+                        
+                        with col2:
+                            st.markdown("<h4 style='font-size: 18px;'>Target Data</h4>", unsafe_allow_html=True)
+                            if isinstance(v_df, pd.DataFrame):
+                                # Add Index if not present
+                                if 'Index' not in v_df.columns:
+                                    v_df.insert(0, 'Index', range(1, len(v_df) + 1))
+                                
+                                # Ensure timestamp_seconds is present
+                                v_df = ensure_seconds_column(v_df)
+                                
+                                # Get display columns
+                                display_cols = ['Index']
+                                if 'timestamp_seconds' in v_df.columns:
+                                    display_cols.append('timestamp_seconds')
+                                
+                                # For ULG files with selected assessment
+                                if v_file_ext == ".ulg" and selected_assessment and selected_assessment != "None":
+                                    # Add columns from assessment map
+                                    if selected_assessment in ASSESSMENT_Y_AXIS_MAP:
+                                        assessment_cols = ASSESSMENT_Y_AXIS_MAP[selected_assessment]
+                                        display_cols.extend([col for col in assessment_cols if col in v_df.columns])
+                                else:
+                                    # Add all numeric columns
+                                    numeric_cols = [col for col in v_df.columns if pd.api.types.is_numeric_dtype(v_df[col]) 
+                                                and col not in display_cols]
+                                    display_cols.extend(numeric_cols)
+                                
+                                # Display DataFrame with selected columns
+                                st.dataframe(
+                                    v_df[list(dict.fromkeys(display_cols))].rename(columns=COLUMN_DISPLAY_NAMES),
+                                    use_container_width=True,
+                                    height=600
+                                )
+                            elif isinstance(v_df, dict):
+                                # Handle dictionary of DataFrames (ULog case)
+                                if selected_assessment and selected_assessment != "None":
+                                    selected_topic = assessment_to_topic.get(str(selected_assessment))
+                                    if selected_topic and selected_topic in v_df:
+                                        df_to_display = v_df[selected_topic]
+                                        if isinstance(df_to_display, pd.DataFrame):
+                                            # Add Index if not present
+                                            if 'Index' not in df_to_display.columns:
+                                                df_to_display.insert(0, 'Index', range(1, len(df_to_display) + 1))
+                                            
+                                            # Ensure timestamp_seconds is present
+                                            df_to_display = ensure_seconds_column(df_to_display)
+                                            
+                                            # Get display columns
+                                            display_cols = ['Index']
+                                            if 'timestamp_seconds' in df_to_display.columns:
+                                                display_cols.append('timestamp_seconds')
+                                            
+                                            # Add columns from assessment map
+                                            if selected_assessment in ASSESSMENT_Y_AXIS_MAP:
+                                                assessment_cols = ASSESSMENT_Y_AXIS_MAP[selected_assessment]
+                                                display_cols.extend([col for col in assessment_cols if col in df_to_display.columns])
+                                            
+                                            # Display DataFrame with selected columns
+                                            st.dataframe(
+                                                df_to_display[list(dict.fromkeys(display_cols))].rename(columns=COLUMN_DISPLAY_NAMES),
+                                                use_container_width=True,
+                                                height=600
+                                            )
+                                        else:
+                                            st.warning("⚠️ Selected topic data is not in the correct format")
+                                    else:
+                                        st.warning("⚠️ Selected topic not found in the data")
+                                else:
+                                    st.info("📋 Please select a topic to view the data")
+                            else:
+                                st.warning("⚠️ Target data not properly loaded")
+                            
+                # Plot Tab
+                with tab1:
+                    # --- Metrics Row (Full Width) ---
+                    b_df = st.session_state.get("b_df")
+                    v_df = st.session_state.get("v_df")
+                    metrics_ready = False
+                    x_axis = y_axis = z_threshold = x_min = x_max = y_min = y_max = None
+                    
+                    x_axis_options = []
+                    y_axis_options = []
+                    default_x = None
+                    default_y = None
+
+                    if isinstance(b_df, pd.DataFrame) and isinstance(v_df, pd.DataFrame):
+                        b_numeric = get_numeric_columns(b_df)
+                        v_numeric = get_numeric_columns(v_df)
+                        common_cols = list(set(b_numeric) & set(v_numeric))
+                        ALLOWED_X_AXIS = ["Index", "timestamp_seconds"] + [col for col in common_cols if col not in ["Index", "timestamp_seconds"]]
+                        if 'selected_assessment' in locals() and isinstance(selected_assessment, str) and selected_assessment != "None":
+                            allowed_y_axis = ASSESSMENT_Y_AXIS_MAP.get(selected_assessment, [])
+                            allowed_y_axis = [col for col in allowed_y_axis if col in b_df.columns]
+                            if not allowed_y_axis:
+                                allowed_y_axis = list(b_df.columns)
+                            allowed_y_axis = [col for col in allowed_y_axis if pd.api.types.is_numeric_dtype(b_df[col])]
+                            ALLOWED_X_AXIS = ["Index", "timestamp_seconds"] + [col for col in allowed_y_axis if col not in ["Index", "timestamp_seconds"]]
+                        else:
+                            allowed_y_axis = [col for col in b_df.columns if pd.api.types.is_numeric_dtype(b_df[col])]
+                            ALLOWED_X_AXIS = ["Index", "timestamp_seconds"] + [col for col in allowed_y_axis if col not in ["Index", "timestamp_seconds"]]
+                        x_axis_options = ALLOWED_X_AXIS
+                        y_axis_options = allowed_y_axis
+                        if 'selected_assessment' in locals() and isinstance(selected_assessment, str) and selected_assessment != "None":
+                            default_x = 'timestamp_seconds' if 'timestamp_seconds' in x_axis_options else ('Index' if 'Index' in x_axis_options else x_axis_options[0])
+                        else:
+                            default_x = 'Index' if 'Index' in x_axis_options else x_axis_options[0]
+                        if b_df is not None and v_df is not None and hasattr(b_df, 'columns') and hasattr(v_df, 'columns'):
+                            is_csv_data = any(col in b_df.columns for col in ['Thrust (kgf)', 'cD2detailpeak', 'Thrust'])
+                            if is_csv_data:
+                                preferred_y_columns = ['Thrust (kgf)', 'cD2detailpeak', 'Thrust']
+                                for preferred_col in preferred_y_columns:
+                                    if preferred_col in y_axis_options:
+                                        default_y = preferred_col
+                                        break
+                                else:
+                                    default_y = y_axis_options[1] if y_axis_options else None
+                        else:
+                            default_y = y_axis_options[0] if y_axis_options else None
+                    metrics_col, param_col = st.columns([0.8, 0.2])
+                    with param_col:
+                        st.markdown("""
+                        <div style='display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;'>
+                            <span style='font-size: 1.2rem;'>📝</span>
+                            <span style='font-size: 1.1rem; font-weight: 600;'>Parameters</span>
+                        </div>
+                        """, unsafe_allow_html=True)
+
+                        prev_x_axis = st.session_state.get('prev_x_axis_comparative', None)
+                        prev_y_axis = st.session_state.get('prev_y_axis_comparative', None)
+
+                        x_axis_display_cmp = [get_display_name(col) for col in x_axis_options]
+                        x_axis_selected_display_cmp = st.selectbox("X-Axis", x_axis_display_cmp, key="x_axis_comparative", index=x_axis_display_cmp.index(get_display_name(default_x)) if isinstance(default_x, str) and get_display_name(default_x) in x_axis_display_cmp else 0)
+                        x_axis = x_axis_options[x_axis_display_cmp.index(x_axis_selected_display_cmp)]
+                        y_axis_display_cmp = [get_display_name(col) for col in y_axis_options]
+                        y_axis_selected_display_cmp = st.selectbox("Y-Axis", y_axis_display_cmp, key="y_axis_comparative", index=y_axis_display_cmp.index(get_display_name(default_y)) if isinstance(default_y, str) and get_display_name(default_y) in y_axis_display_cmp else 0)
+                        y_axis = y_axis_options[y_axis_display_cmp.index(y_axis_selected_display_cmp)]
+
+                        if 'last_x_axis_comparative' not in st.session_state or st.session_state['last_x_axis_comparative'] != x_axis:
+                            if x_axis == 'timestamp_seconds':
+                                if b_df is not None and x_axis in b_df.columns:
+                                    x_min_val = float(b_df[x_axis].min())
+                                    x_max_val = float(b_df[x_axis].max())
+                                elif v_df is not None and x_axis in v_df.columns:
+                                    x_min_val = float(v_df[x_axis].min())
+                                    x_max_val = float(v_df[x_axis].max())
+                                else:
+                                    x_min_val, x_max_val = 0.0, 1.0
+                                st.session_state['x_min_comparative_mmss'] = seconds_to_mmss(x_min_val)
+                                st.session_state['x_max_comparative_mmss'] = seconds_to_mmss(x_max_val)
+                            else:
+                                if b_df is not None and x_axis in b_df.columns:
+                                    x_min_val = float(b_df[x_axis].min())
+                                    x_max_val = float(b_df[x_axis].max())
+                                elif v_df is not None and x_axis in v_df.columns:
+                                    x_min_val = float(v_df[x_axis].min())
+                                    x_max_val = float(v_df[x_axis].max())
+                                else:
+                                    x_min_val, x_max_val = 0.0, 1.0
+                                st.session_state['x_min_comparative'] = x_min_val
+                                st.session_state['x_max_comparative'] = x_max_val
+                            st.session_state['last_x_axis_comparative'] = x_axis
+                        if 'last_y_axis_comparative' not in st.session_state or st.session_state['last_y_axis_comparative'] != y_axis:
+                            if b_df is not None and y_axis in b_df.columns:
+                                y_min_val = float(b_df[y_axis].min())
+                                y_max_val = float(b_df[y_axis].max())
+                            elif v_df is not None and y_axis in v_df.columns:
+                                y_min_val = float(v_df[y_axis].min())
+                                y_max_val = float(v_df[y_axis].max())
+                            else:
+                                y_min_val, y_max_val = 0.0, 1.0
+                            st.session_state['y_min_comparative'] = y_min_val
+                            st.session_state['y_max_comparative'] = y_max_val
+                            st.session_state['last_y_axis_comparative'] = y_axis
+
+                        st.session_state['prev_x_axis_comparative'] = x_axis
+                        st.session_state['prev_y_axis_comparative'] = y_axis
+
+                        z_threshold = st.slider("Z-Score Threshold", 1.0, 5.0, 2.5, 0.01, key="z-slider-comparative")
+                        
+                        # --- Combined Range Calculation ---
+                        x_min_val, x_max_val, y_min_val, y_max_val = (0.0, 1.0, 0.0, 1.0)
+                        if x_axis and y_axis:
+                            # Calculate combined X-axis range
+                            if b_df is not None and v_df is not None and x_axis in b_df.columns and x_axis in v_df.columns:
+                                x_min_val, x_max_val = (min(b_df[x_axis].min(), v_df[x_axis].min()), max(b_df[x_axis].max(), v_df[x_axis].max()))
+                            elif b_df is not None and x_axis in b_df.columns:
+                                x_min_val, x_max_val = (b_df[x_axis].min(), b_df[x_axis].max())
+                            elif v_df is not None and x_axis in v_df.columns:
+                                x_min_val, x_max_val = (v_df[x_axis].min(), v_df[x_axis].max())
+
+                            # Calculate combined Y-axis range
+                            if b_df is not None and v_df is not None and y_axis in b_df.columns and y_axis in v_df.columns:
+                                y_min_val, y_max_val = (min(b_df[y_axis].min(), v_df[y_axis].min()), max(b_df[y_axis].max(), v_df[y_axis].max()))
+                            elif b_df is not None and y_axis in b_df.columns:
+                                y_min_val, y_max_val = (b_df[y_axis].min(), b_df[y_axis].max())
+                            elif v_df is not None and y_axis in v_df.columns:
+                                y_min_val, y_max_val = (v_df[y_axis].min(), v_df[y_axis].max())
+
+                        st.markdown(f"<span style='font-size:1.05rem; color:#444; font-weight:500;'>{'Time' if x_axis == 'timestamp_seconds' else x_axis}</span>", unsafe_allow_html=True)
+                        x_min_col, x_max_col, x_reset_col = st.columns([6, 6, 2])
+                        with x_min_col:
+                            if x_axis == 'timestamp_seconds':
+                                x_min_mmss = seconds_to_mmss(x_min_val)
+                                if 'x_min_comparative_mmss' not in st.session_state:
+                                    st.session_state['x_min_comparative_mmss'] = x_min_mmss
+                                x_min_input = st.text_input("Start", value=st.session_state['x_min_comparative_mmss'], key='x_min_comparative_mmss')
+                                x_min = mmss_to_seconds(x_min_input)
+                            else:
+                                if 'x_min_comparative' not in st.session_state:
+                                    st.session_state['x_min_comparative'] = float(x_min_val)
+                                x_min = st.number_input("Start", value=st.session_state['x_min_comparative'], format="%.2f", key="x_min_comparative", step=1.0)
+                        with x_max_col:
+                            if x_axis == 'timestamp_seconds':
+                                x_max_mmss = seconds_to_mmss(x_max_val)
+                                if 'x_max_comparative_mmss' not in st.session_state:
+                                    st.session_state['x_max_comparative_mmss'] = x_max_mmss
+                                x_max_input = st.text_input("End", value=st.session_state['x_max_comparative_mmss'], key='x_max_comparative_mmss')
+                                x_max = mmss_to_seconds(x_max_input)
+                            else:
+                                if 'x_max_comparative' not in st.session_state:
+                                    st.session_state['x_max_comparative'] = float(x_max_val)
+                                x_max = st.number_input("End", value=st.session_state['x_max_comparative'], format="%.2f", key="x_max_comparative", step=1.0)
+                        with x_reset_col:
+                            st.markdown('<div style="margin-top: 28px;"></div>', unsafe_allow_html=True)
+                            if st.button("↺", key="reset_x_comparative", help="Reset X-axis range", on_click=reset_x_comparative_callback, args=(b_df, x_axis)):
+                                for k in ['x_min_comparative', 'x_max_comparative', 'x_min_comparative_mmss', 'x_max_comparative_mmss']:
+                                    if k in st.session_state:
+                                        del st.session_state[k]
+                                st.rerun()
+
+                        st.markdown(f"<span style='font-size:1.05rem; color:#444; font-weight:500;'>{y_axis}</span>", unsafe_allow_html=True)
+                        y_min_col, y_max_col, y_reset_col = st.columns([6, 6, 2])
+                        with y_min_col:
+                            if 'y_min_comparative' not in st.session_state:
+                                st.session_state['y_min_comparative'] = float(y_min_val)
+                            y_min = st.number_input("Start", value=st.session_state['y_min_comparative'], format="%.2f", key="y_min_comparative", step=1.0)
+                        with y_max_col:
+                            if 'y_max_comparative' not in st.session_state:
+                                st.session_state['y_max_comparative'] = float(y_max_val)
+                            y_max = st.number_input("End", value=st.session_state['y_max_comparative'], format="%.2f", key="y_max_comparative", step=1.0)
+                        with y_reset_col:
+                            st.markdown('<div style="margin-top: 28px;"></div>', unsafe_allow_html=True)
+                            if st.button("↺", key="reset_y_comparative", help="Reset Y-axis range", on_click=reset_y_comparative_callback, args=(b_df, y_axis)):
+                                for k in ['y_min_comparative', 'y_max_comparative']:
+                                    if k in st.session_state:
+                                        del st.session_state[k]
+                                st.rerun()
+                    with metrics_col:
+                        # Calculate metrics based on current parameters
+                        if (b_df is not None and v_df is not None and x_axis in b_df.columns and y_axis in b_df.columns and 
+                            x_axis in v_df.columns and y_axis in v_df.columns and 
+                            None not in (x_min, x_max, y_min, y_max)):
+                            try:
+                                b_filtered = b_df[(b_df[x_axis] >= x_min) & (b_df[x_axis] <= x_max) & (b_df[y_axis] >= y_min) & (b_df[y_axis] <= y_max)]
+                                v_filtered = v_df[(v_df[x_axis] >= x_min) & (v_df[x_axis] <= x_max) & (v_df[y_axis] >= y_min) & (v_df[y_axis] <= y_max)]
+                                
+                                if len(b_filtered) > 0 and len(v_filtered) > 0:
+                                    if x_axis == 'timestamp_seconds':
+                                        b_filtered, v_filtered, _ = resample_to_common_time(b_filtered, v_filtered)
+                                    
+                                    if len(b_filtered) > 0 and len(v_filtered) > 0:
+                                        merged = pd.DataFrame()
+                                        merged['benchmark'] = b_filtered[y_axis].reset_index(drop=True)
+                                        merged['target'] = v_filtered[y_axis].reset_index(drop=True)
+                                        merged['benchmark_x'] = b_filtered[x_axis].reset_index(drop=True)
+                                        merged['target_x'] = v_filtered[x_axis].reset_index(drop=True)
+                                        merged['abs_diff'] = abs(merged['target'] - merged['benchmark'])
+                                        merged['rel_diff'] = merged['abs_diff'] / (abs(merged['benchmark']) + 1e-10)
+                                        window = min(50, max(20, len(merged) // 10))
+                                        merged['rolling_mean'] = merged['abs_diff'].rolling(window=window, center=True).mean()
+                                        merged['rolling_std'] = merged['abs_diff'].rolling(window=window, center=True).std()
+                                        rmse = np.sqrt(np.mean((merged['target'] - merged['benchmark']) ** 2))
+                                        # Use combined range of both datasets for symmetric similarity calculation
+                                        combined_range = max(merged['benchmark'].max(), merged['target'].max()) - min(merged['benchmark'].min(), merged['target'].min())
+                                        similarity = 1 - (rmse / combined_range) if combined_range != 0 else (1.0 if rmse == 0 else 0.0)
+                                        similarity_index = similarity * 100
+                                        merged["Difference"] = merged['target'] - merged['benchmark']
+                                        merged["Z_Score"] = (merged["Difference"] - merged["Difference"].mean()) / merged["Difference"].std()
+                                        merged = merged.reset_index(drop=True)
+                                        abnormal_mask = abs(merged["Z_Score"]) > z_threshold
+                                        abnormal_points = merged[abnormal_mask]
+                                        abnormal_count = int(abnormal_mask.sum())
+                                        metrics_ready = True
+                                    else:
+                                        rmse = 0.0
+                                        similarity_index = 0.0
+                                        abnormal_count = 0
+                                        metrics_ready = False
+                                else:
+                                    rmse = 0.0
+                                    similarity_index = 0.0
+                                    abnormal_count = 0
+                                    metrics_ready = False
+                            except Exception as e:
                                 rmse = 0.0
                                 similarity_index = 0.0
                                 abnormal_count = 0
@@ -1969,325 +1979,315 @@ def main():
                             similarity_index = 0.0
                             abnormal_count = 0
                             metrics_ready = False
-                    except Exception as e:
-                        rmse = 0.0
-                        similarity_index = 0.0
-                        abnormal_count = 0
-                        metrics_ready = False
+                        
+                        metrics_cols = st.columns(3)
+                        with metrics_cols[0]:
+                            fig1 = go.Figure(go.Indicator(
+                                mode="gauge+number",
+                                value=rmse,
+                                title={'text': "RMSE"},
+                                number={'valueformat': ',.2f'},
+                                domain={'x': [0, 1], 'y': [0, 1]},
+                                gauge={
+                                    'axis': {'range': [0, max(rmse * 2, 1)], 'tickformat': ',.2f'},
+                                    'bar': {'color': "darkblue"},
+                                    'steps': [
+                                        {'range': [0, rmse], 'color': "lightgray"},
+                                        {'range': [rmse, max(rmse * 2, 1)], 'color': "gray"}
+                                    ]
+                                }
+                            ))
+                            fig1.update_layout(width=200, height=120, margin=dict(t=50, b=10), paper_bgcolor="rgba(0,0,0,0)")
+                            st.plotly_chart(fig1, use_container_width=False)
+                        with metrics_cols[1]:
+                            fig2 = go.Figure(go.Indicator(
+                                mode="gauge+number",
+                                value=similarity_index,
+                                title={'text': "Similarity Index (%)"},
+                                number={'valueformat': '.2f', 'suffix': '%'},
+                                domain={'x': [0, 1], 'y': [0, 1]},
+                                gauge={
+                                    'axis': {'range': [0, 100], 'tickformat': '.0f'},
+                                    'bar': {'color': "orange"},
+                                    'steps': [
+                                        {'range': [0, 33], 'color': "#d4f0ff"},
+                                        {'range': [33, 66], 'color': "#ffeaa7"},
+                                        {'range': [66, 100], 'color': "#c8e6c9"}
+                                    ],
+                                    'threshold': {
+                                        'line': {'color': "red", 'width': 4},
+                                        'thickness': 0.75,
+                                        'value': 50
+                                    }
+                                }
+                            ))
+                            fig2.update_layout(width=200, height=120, margin=dict(t=50, b=10), paper_bgcolor="rgba(0,0,0,0)")
+                            st.plotly_chart(fig2, use_container_width=False)
+                        with metrics_cols[2]:
+                            fig3 = go.Figure(go.Indicator(
+                                mode="gauge+number",
+                                value=abnormal_count,
+                                title={'text': "Abnormal Points"},
+                                domain={'x': [0, 1], 'y': [0, 1]},
+                                gauge={
+                                    'axis': {'range': [0, max(10, abnormal_count * 2)]},
+                                    'bar': {'color': "crimson"},
+                                    'steps': [
+                                        {'range': [0, 10], 'color': "#c8e6c9"},
+                                        {'range': [10, 25], 'color': "#ffcc80"},
+                                        {'range': [25, 100], 'color': "#ef5350"}
+                                    ]
+                                }
+                            ))
+                            fig3.update_layout(width=200, height=120, margin=dict(t=50, b=10), paper_bgcolor="rgba(0,0,0,0)")
+                            st.plotly_chart(fig3, use_container_width=False)
+                        # --- Main Content: Plot ---
+                        plot_container = st.container()
+                        with plot_container:
+                            if not x_axis or not y_axis:
+                                st.info("📊 Please select valid X and Y axes to compare")
+                                st.stop()
+                            if b_df is not None and hasattr(b_df, 'columns') and x_axis in b_df.columns:
+                                pass
+                            else:
+                                st.error(f"Selected X-axis '{x_axis}' not found in data")
+                                st.stop()
+                            # Plot visualization (move all plot code here)
+                            if x_axis and y_axis and isinstance(b_df, pd.DataFrame) and isinstance(v_df, pd.DataFrame):
+                                try:
+                                    b_filtered = b_df[(b_df[x_axis] >= x_min) & (b_df[x_axis] <= x_max) & (b_df[y_axis] >= y_min) & (b_df[y_axis] <= y_max)]
+                                    v_filtered = v_df[(v_df[x_axis] >= x_min) & (v_df[x_axis] <= x_max) & (v_df[y_axis] >= y_min) & (v_df[y_axis] <= y_max)]
+                                    if x_axis == 'timestamp_seconds':
+                                        b_filtered, v_filtered, common_time = resample_to_common_time(b_filtered, v_filtered)
+                                    merged = pd.DataFrame()
+                                    merged['benchmark'] = b_filtered[y_axis].reset_index(drop=True)
+                                    merged['target'] = v_filtered[y_axis].reset_index(drop=True)
+                                    merged['benchmark_x'] = b_filtered[x_axis].reset_index(drop=True)
+                                    merged['target_x'] = v_filtered[x_axis].reset_index(drop=True)
+                                    merged['abs_diff'] = abs(merged['target'] - merged['benchmark'])
+                                    merged['rel_diff'] = merged['abs_diff'] / (abs(merged['benchmark']) + 1e-10)
+                                    window = min(50, max(20, len(merged) // 10))
+                                    merged['rolling_mean'] = merged['abs_diff'].rolling(window=window, center=True).mean()
+                                    merged['rolling_std'] = merged['abs_diff'].rolling(window=window, center=True).std()
+                                    rmse = np.sqrt(np.mean((merged['target'] - merged['benchmark']) ** 2))
+                                    # Use combined range of both datasets for symmetric similarity calculation
+                                    combined_range = max(merged['benchmark'].max(), merged['target'].max()) - min(merged['benchmark'].min(), merged['target'].min())
+                                    similarity = 1 - (rmse / combined_range) if combined_range != 0 else (1.0 if rmse == 0 else 0.0)
+                                    similarity_index = similarity * 100
+                                    merged["Difference"] = merged['target'] - merged['benchmark']
+                                    merged["Z_Score"] = (merged["Difference"] - merged["Difference"].mean()) / merged["Difference"].std()
+                                    merged = merged.reset_index(drop=True)
+                                    abnormal_mask = abs(merged["Z_Score"]) > z_threshold
+                                    abnormal_points = merged[abnormal_mask]
+                                    abnormal_count = int(abnormal_mask.sum())
+                                    # --- Plot Visualization heading and Plot Mode selector in one row ---
+                                    heading_col, mode_col = st.columns([0.7, 0.3])
+                                    with heading_col:
+                                        st.markdown("### 🧮 Plot Visualization")
+                                    with mode_col:
+                                        # Plot mode selection and rerun logic
+                                        if 'previous_plot_mode' not in st.session_state:
+                                            st.session_state['previous_plot_mode'] = 'Superimposed'
+                                        plot_mode = st.radio(
+                                            "Plot Mode",
+                                            ["Superimposed", "Separate"],
+                                            horizontal=True,
+                                            key="comparative_plot_mode"
+                                        )
+                                        if plot_mode != st.session_state['previous_plot_mode']:
+                                            st.session_state['previous_plot_mode'] = plot_mode
+                                            st.rerun()
+                                    plot_container = st.container()
+                                    with plot_container:
+                                        if plot_mode == "Superimposed":
+                                            fig = go.Figure()
+                                            fig.add_trace(go.Scatter(
+                                                x=b_filtered[x_axis],
+                                                y=b_filtered[y_axis],
+                                                mode='lines',
+                                                name='Benchmark'
+                                            ))
+                                            fig.add_trace(go.Scatter(
+                                                x=v_filtered[x_axis],
+                                                y=v_filtered[y_axis],
+                                                mode='lines',
+                                                name='Target',
+                                                line=dict(color='green')
+                                            ))
+                                            if not abnormal_points.empty:
+                                                fig.add_trace(
+                                                    go.Scatter(
+                                                        x=abnormal_points['benchmark_x'],
+                                                        y=abnormal_points['benchmark'],
+                                                        mode='markers',
+                                                        marker=dict(color='red', size=8),
+                                                        name='Abnormal Points (Benchmark)'
+                                                    )
+                                                )
+                                                fig.add_trace(
+                                                    go.Scatter(
+                                                        x=abnormal_points['target_x'],
+                                                        y=abnormal_points['target'],
+                                                        mode='markers',
+                                                        marker=dict(color='orange', size=8),
+                                                        name='Abnormal Points (Target)'
+                                                    )
+                                                )
+                                            if x_axis == 'timestamp_seconds':
+                                                tick_vals, tick_texts = get_timestamp_ticks(b_filtered[x_axis])
+                                                fig.update_xaxes(
+                                                    tickvals=tick_vals,
+                                                    ticktext=tick_texts,
+                                                    title_text=get_axis_title(x_axis),
+                                                    type='linear'
+                                                )
+                                            else:
+                                                fig.update_xaxes(title_text=x_axis)
+                                            fig.update_layout(
+                                                height=450,
+                                                showlegend=True,
+                                                legend=dict(
+                                                    orientation="h",
+                                                    yanchor="bottom",
+                                                    y=1.01,
+                                                    xanchor="center",
+                                                    x=0.5
+                                                ),
+                                                margin=dict(t=15, b=10, l=50, r=20),
+                                                plot_bgcolor='white',
+                                                yaxis=dict(
+                                                    showticklabels=True,
+                                                    title=y_axis
+                                                )
+                                            )
+                                            st.plotly_chart(fig, use_container_width=True)
+                                            # Add abnormal points table below the plot
+                                            if not abnormal_points.empty:
+                                                st.markdown("### ⚠️ Abnormal Points Data")
+                                                # Only show the target X-axis value, with the X-axis name as the column header
+                                                table_cols = ['target_x', 'benchmark', 'target', 'Difference', 'Z_Score']
+                                                table_cols = [col for col in table_cols if col in abnormal_points.columns]
+                                                display_df = abnormal_points[table_cols].copy()
+                                                if 'target_x' in display_df.columns:
+                                                    display_df = display_df.rename(columns={'target_x': x_axis})
+                                                st.dataframe(
+                                                    display_df.round(4),
+                                                    use_container_width=True,
+                                                    height=250
+                                                )
+                                        elif plot_mode == "Separate":
+                                            fig = make_subplots(rows=2, cols=1, 
+                                                            shared_xaxes=True, 
+                                                            subplot_titles=None,  
+                                                            vertical_spacing=0.08,  
+                                                            row_heights=[0.5, 0.5])
+                                            fig.add_trace(go.Scatter(
+                                                x=b_filtered[x_axis],
+                                                y=b_filtered[y_axis],
+                                                mode='lines',
+                                                name='Benchmark',
+                                                line=dict(color='blue')
+                                            ), row=1, col=1)
+                                            fig.add_trace(go.Scatter(
+                                                x=v_filtered[x_axis],
+                                                y=v_filtered[y_axis],
+                                                mode='lines',
+                                                name='Target',
+                                                line=dict(color='green')
+                                            ), row=2, col=1)
+                                            if not abnormal_points.empty:
+                                                fig.add_trace(
+                                                    go.Scatter(
+                                                        x=abnormal_points['benchmark_x'],
+                                                        y=abnormal_points['benchmark'],
+                                                        mode='markers',
+                                                        marker=dict(color='red', size=8),
+                                                        name='Abnormal Points (Benchmark)'
+                                                    ), row=1, col=1
+                                                )
+                                                fig.add_trace(
+                                                    go.Scatter(
+                                                        x=abnormal_points['target_x'],
+                                                        y=abnormal_points['target'],
+                                                        mode='markers',
+                                                        marker=dict(color='orange', size=8),
+                                                        name='Abnormal Points (Target)'
+                                                    ), row=2, col=1
+                                                )
+                                            if x_axis == 'timestamp_seconds':
+                                                tick_vals, tick_texts = get_timestamp_ticks(b_filtered[x_axis])
+                                                fig.update_xaxes(
+                                                    tickvals=tick_vals,
+                                                    ticktext=tick_texts,
+                                                    title_text="",  
+                                                    type='linear',
+                                                    row=1, col=1
+                                                )
+                                                fig.update_xaxes(
+                                                    tickvals=tick_vals,
+                                                    ticktext=tick_texts,
+                                                    title_text=get_axis_title(x_axis),
+                                                    type='linear',
+                                                    row=2, col=1
+                                                )
+                                            else:
+                                                fig.update_xaxes(title_text="", row=1, col=1)
+                                                fig.update_xaxes(title_text=x_axis, row=2, col=1)
+                                            fig.update_layout(
+                                                height=450,
+                                                showlegend=True,
+                                                legend=dict(
+                                                    orientation="h",
+                                                    yanchor="bottom",
+                                                    y=1.01,
+                                                    xanchor="center",
+                                                    x=0.5
+                                                ),
+                                                margin=dict(t=15, b=10, l=50, r=20),
+                                                plot_bgcolor='white',
+                                                yaxis=dict(
+                                                    showticklabels=True,
+                                                    title=y_axis
+                                                )
+                                            )
+                                            fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='LightGray')
+                                            fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='LightGray')
+                                            fig.update_yaxes(title_text=y_axis, row=1, col=1)
+                                            fig.update_yaxes(title_text=y_axis, row=2, col=1)
+                                            st.plotly_chart(fig, use_container_width=True)
+                                            # Add abnormal points table below the plot
+                                            if not abnormal_points.empty:
+                                                st.markdown("### ⚠️ Abnormal Points Data")
+                                                # Only show the target X-axis value, with the X-axis name as the column header
+                                                table_cols = ['target_x', 'benchmark', 'target', 'Difference', 'Z_Score']
+                                                table_cols = [col for col in table_cols if col in abnormal_points.columns]
+                                                display_df = abnormal_points[table_cols].copy()
+                                                if 'target_x' in display_df.columns:
+                                                    display_df = display_df.rename(columns={'target_x': x_axis})
+                                                st.dataframe(
+                                                    display_df.round(4),
+                                                    use_container_width=True,
+                                                    height=250
+                                                )
+                                except Exception as e:
+                                    st.error(f"Error during plotting: {str(e)}")
+            else:
+                # Show appropriate guidance message
+                if selected_bench != "None" and selected_val != "None" and b_file_ext == ".ulg" and v_file_ext == ".ulg":
+                    st.info("📋 Please select a topic to begin analysis")
+                elif b_df is None and v_df is None:
+                    pass  # Removed warning message
+                elif b_df is None:
+                    pass  # Removed warning message
                 else:
-                    rmse = 0.0
-                    similarity_index = 0.0
-                    abnormal_count = 0
-                    metrics_ready = False
-                
-                metrics_cols = st.columns(3)
-                with metrics_cols[0]:
-                    fig1 = go.Figure(go.Indicator(
-                        mode="gauge+number",
-                        value=rmse,
-                        title={'text': "RMSE"},
-                        number={'valueformat': ',.2f'},
-                        domain={'x': [0, 1], 'y': [0, 1]},
-                        gauge={
-                            'axis': {'range': [0, max(rmse * 2, 1)], 'tickformat': ',.2f'},
-                            'bar': {'color': "darkblue"},
-                            'steps': [
-                                {'range': [0, rmse], 'color': "lightgray"},
-                                {'range': [rmse, max(rmse * 2, 1)], 'color': "gray"}
-                            ]
-                        }
-                    ))
-                    fig1.update_layout(width=200, height=120, margin=dict(t=50, b=10), paper_bgcolor="rgba(0,0,0,0)")
-                    st.plotly_chart(fig1, use_container_width=False)
-                with metrics_cols[1]:
-                    fig2 = go.Figure(go.Indicator(
-                        mode="gauge+number",
-                        value=similarity_index,
-                        title={'text': "Similarity Index (%)"},
-                        number={'valueformat': '.2f', 'suffix': '%'},
-                        domain={'x': [0, 1], 'y': [0, 1]},
-                        gauge={
-                            'axis': {'range': [0, 100], 'tickformat': '.0f'},
-                            'bar': {'color': "orange"},
-                            'steps': [
-                                {'range': [0, 33], 'color': "#d4f0ff"},
-                                {'range': [33, 66], 'color': "#ffeaa7"},
-                                {'range': [66, 100], 'color': "#c8e6c9"}
-                            ],
-                            'threshold': {
-                                'line': {'color': "red", 'width': 4},
-                                'thickness': 0.75,
-                                'value': 50
-                            }
-                        }
-                    ))
-                    fig2.update_layout(width=200, height=120, margin=dict(t=50, b=10), paper_bgcolor="rgba(0,0,0,0)")
-                    st.plotly_chart(fig2, use_container_width=False)
-                with metrics_cols[2]:
-                    fig3 = go.Figure(go.Indicator(
-                        mode="gauge+number",
-                        value=abnormal_count,
-                        title={'text': "Abnormal Points"},
-                        domain={'x': [0, 1], 'y': [0, 1]},
-                        gauge={
-                            'axis': {'range': [0, max(10, abnormal_count * 2)]},
-                            'bar': {'color': "crimson"},
-                            'steps': [
-                                {'range': [0, 10], 'color': "#c8e6c9"},
-                                {'range': [10, 25], 'color': "#ffcc80"},
-                                {'range': [25, 100], 'color': "#ef5350"}
-                            ]
-                        }
-                    ))
-                    fig3.update_layout(width=200, height=120, margin=dict(t=50, b=10), paper_bgcolor="rgba(0,0,0,0)")
-                    st.plotly_chart(fig3, use_container_width=False)
-                # --- Main Content: Plot ---
-                plot_container = st.container()
-                with plot_container:
-                    if not x_axis or not y_axis:
-                        st.info("📊 Please select valid X and Y axes to compare")
-                        st.stop()
-                    if b_df is not None and hasattr(b_df, 'columns') and x_axis in b_df.columns:
-                        pass
-                    else:
-                        st.error(f"Selected X-axis '{x_axis}' not found in data")
-                        st.stop()
-                    # Plot visualization (move all plot code here)
-                    if x_axis and y_axis and isinstance(b_df, pd.DataFrame) and isinstance(v_df, pd.DataFrame):
-                        try:
-                            b_filtered = b_df[(b_df[x_axis] >= x_min) & (b_df[x_axis] <= x_max) & (b_df[y_axis] >= y_min) & (b_df[y_axis] <= y_max)]
-                            v_filtered = v_df[(v_df[x_axis] >= x_min) & (v_df[x_axis] <= x_max) & (v_df[y_axis] >= y_min) & (v_df[y_axis] <= y_max)]
-                            if x_axis == 'timestamp_seconds':
-                                b_filtered, v_filtered, common_time = resample_to_common_time(b_filtered, v_filtered)
-                            merged = pd.DataFrame()
-                            merged['benchmark'] = b_filtered[y_axis].reset_index(drop=True)
-                            merged['target'] = v_filtered[y_axis].reset_index(drop=True)
-                            merged['benchmark_x'] = b_filtered[x_axis].reset_index(drop=True)
-                            merged['target_x'] = v_filtered[x_axis].reset_index(drop=True)
-                            merged['abs_diff'] = abs(merged['target'] - merged['benchmark'])
-                            merged['rel_diff'] = merged['abs_diff'] / (abs(merged['benchmark']) + 1e-10)
-                            window = min(50, max(20, len(merged) // 10))
-                            merged['rolling_mean'] = merged['abs_diff'].rolling(window=window, center=True).mean()
-                            merged['rolling_std'] = merged['abs_diff'].rolling(window=window, center=True).std()
-                            rmse = np.sqrt(np.mean((merged['target'] - merged['benchmark']) ** 2))
-                            # Use combined range of both datasets for symmetric similarity calculation
-                            combined_range = max(merged['benchmark'].max(), merged['target'].max()) - min(merged['benchmark'].min(), merged['target'].min())
-                            similarity = 1 - (rmse / combined_range) if combined_range != 0 else (1.0 if rmse == 0 else 0.0)
-                            similarity_index = similarity * 100
-                            merged["Difference"] = merged['target'] - merged['benchmark']
-                            merged["Z_Score"] = (merged["Difference"] - merged["Difference"].mean()) / merged["Difference"].std()
-                            merged = merged.reset_index(drop=True)
-                            abnormal_mask = abs(merged["Z_Score"]) > z_threshold
-                            abnormal_points = merged[abnormal_mask]
-                            abnormal_count = int(abnormal_mask.sum())
-                            # --- Plot Visualization heading and Plot Mode selector in one row ---
-                            heading_col, mode_col = st.columns([0.7, 0.3])
-                            with heading_col:
-                                st.markdown("### 🧮 Plot Visualization")
-                            with mode_col:
-                                # Plot mode selection and rerun logic
-                                if 'previous_plot_mode' not in st.session_state:
-                                    st.session_state['previous_plot_mode'] = 'Superimposed'
-                                plot_mode = st.radio(
-                                    "Plot Mode",
-                                    ["Superimposed", "Separate"],
-                                    horizontal=True,
-                                    key="comparative_plot_mode"
-                                )
-                                if plot_mode != st.session_state['previous_plot_mode']:
-                                    st.session_state['previous_plot_mode'] = plot_mode
-                                    st.rerun()
-                            plot_container = st.container()
-                            with plot_container:
-                                if plot_mode == "Superimposed":
-                                    fig = go.Figure()
-                                    fig.add_trace(go.Scatter(
-                                        x=b_filtered[x_axis],
-                                        y=b_filtered[y_axis],
-                                        mode='lines',
-                                        name='Benchmark'
-                                    ))
-                                    fig.add_trace(go.Scatter(
-                                        x=v_filtered[x_axis],
-                                        y=v_filtered[y_axis],
-                                        mode='lines',
-                                        name='Target',
-                                        line=dict(color='green')
-                                    ))
-                                    if not abnormal_points.empty:
-                                        fig.add_trace(
-                                            go.Scatter(
-                                                x=abnormal_points['benchmark_x'],
-                                                y=abnormal_points['benchmark'],
-                                                mode='markers',
-                                                marker=dict(color='red', size=8),
-                                                name='Abnormal Points (Benchmark)'
-                                            )
-                                        )
-                                        fig.add_trace(
-                                            go.Scatter(
-                                                x=abnormal_points['target_x'],
-                                                y=abnormal_points['target'],
-                                                mode='markers',
-                                                marker=dict(color='orange', size=8),
-                                                name='Abnormal Points (Target)'
-                                            )
-                                        )
-                                    if x_axis == 'timestamp_seconds':
-                                        tick_vals, tick_texts = get_timestamp_ticks(b_filtered[x_axis])
-                                        fig.update_xaxes(
-                                            tickvals=tick_vals,
-                                            ticktext=tick_texts,
-                                            title_text=get_axis_title(x_axis),
-                                            type='linear'
-                                        )
-                                    else:
-                                        fig.update_xaxes(title_text=x_axis)
-                                    fig.update_layout(
-                                        height=450,
-                                        showlegend=True,
-                                        legend=dict(
-                                            orientation="h",
-                                            yanchor="bottom",
-                                            y=1.01,
-                                            xanchor="center",
-                                            x=0.5
-                                        ),
-                                        margin=dict(t=15, b=10, l=50, r=20),
-                                        plot_bgcolor='white',
-                                        yaxis=dict(
-                                            showticklabels=True,
-                                            title=y_axis
-                                        )
-                                    )
-                                    st.plotly_chart(fig, use_container_width=True)
-                                    # Add abnormal points table below the plot
-                                    if not abnormal_points.empty:
-                                        st.markdown("### ⚠️ Abnormal Points Data")
-                                        # Only show the target X-axis value, with the X-axis name as the column header
-                                        table_cols = ['target_x', 'benchmark', 'target', 'Difference', 'Z_Score']
-                                        table_cols = [col for col in table_cols if col in abnormal_points.columns]
-                                        display_df = abnormal_points[table_cols].copy()
-                                        if 'target_x' in display_df.columns:
-                                            display_df = display_df.rename(columns={'target_x': x_axis})
-                                        st.dataframe(
-                                            display_df.round(4),
-                                            use_container_width=True,
-                                            height=250
-                                        )
-                                elif plot_mode == "Separate":
-                                    fig = make_subplots(rows=2, cols=1, 
-                                                    shared_xaxes=True, 
-                                                    subplot_titles=None,  
-                                                    vertical_spacing=0.08,  
-                                                    row_heights=[0.5, 0.5])
-                                    fig.add_trace(go.Scatter(
-                                        x=b_filtered[x_axis],
-                                        y=b_filtered[y_axis],
-                                        mode='lines',
-                                        name='Benchmark',
-                                        line=dict(color='blue')
-                                    ), row=1, col=1)
-                                    fig.add_trace(go.Scatter(
-                                        x=v_filtered[x_axis],
-                                        y=v_filtered[y_axis],
-                                        mode='lines',
-                                        name='Target',
-                                        line=dict(color='green')
-                                    ), row=2, col=1)
-                                    if not abnormal_points.empty:
-                                        fig.add_trace(
-                                            go.Scatter(
-                                                x=abnormal_points['benchmark_x'],
-                                                y=abnormal_points['benchmark'],
-                                                mode='markers',
-                                                marker=dict(color='red', size=8),
-                                                name='Abnormal Points (Benchmark)'
-                                            ), row=1, col=1
-                                        )
-                                        fig.add_trace(
-                                            go.Scatter(
-                                                x=abnormal_points['target_x'],
-                                                y=abnormal_points['target'],
-                                                mode='markers',
-                                                marker=dict(color='orange', size=8),
-                                                name='Abnormal Points (Target)'
-                                            ), row=2, col=1
-                                        )
-                                    if x_axis == 'timestamp_seconds':
-                                        tick_vals, tick_texts = get_timestamp_ticks(b_filtered[x_axis])
-                                        fig.update_xaxes(
-                                            tickvals=tick_vals,
-                                            ticktext=tick_texts,
-                                            title_text="",  
-                                            type='linear',
-                                            row=1, col=1
-                                        )
-                                        fig.update_xaxes(
-                                            tickvals=tick_vals,
-                                            ticktext=tick_texts,
-                                            title_text=get_axis_title(x_axis),
-                                            type='linear',
-                                            row=2, col=1
-                                        )
-                                    else:
-                                        fig.update_xaxes(title_text="", row=1, col=1)
-                                        fig.update_xaxes(title_text=x_axis, row=2, col=1)
-                                    fig.update_layout(
-                                        height=450,
-                                        showlegend=True,
-                                        legend=dict(
-                                            orientation="h",
-                                            yanchor="bottom",
-                                            y=1.01,
-                                            xanchor="center",
-                                            x=0.5
-                                        ),
-                                        margin=dict(t=15, b=10, l=50, r=20),
-                                        plot_bgcolor='white',
-                                        yaxis=dict(
-                                            showticklabels=True,
-                                            title=y_axis
-                                        )
-                                    )
-                                    fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='LightGray')
-                                    fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='LightGray')
-                                    fig.update_yaxes(title_text=y_axis, row=1, col=1)
-                                    fig.update_yaxes(title_text=y_axis, row=2, col=1)
-                                    st.plotly_chart(fig, use_container_width=True)
-                                    # Add abnormal points table below the plot
-                                    if not abnormal_points.empty:
-                                        st.markdown("### ⚠️ Abnormal Points Data")
-                                        # Only show the target X-axis value, with the X-axis name as the column header
-                                        table_cols = ['target_x', 'benchmark', 'target', 'Difference', 'Z_Score']
-                                        table_cols = [col for col in table_cols if col in abnormal_points.columns]
-                                        display_df = abnormal_points[table_cols].copy()
-                                        if 'target_x' in display_df.columns:
-                                            display_df = display_df.rename(columns={'target_x': x_axis})
-                                        st.dataframe(
-                                            display_df.round(4),
-                                            use_container_width=True,
-                                            height=250
-                                        )
-                        except Exception as e:
-                            st.error(f"Error during plotting: {str(e)}")
-    else:
-        # Show appropriate guidance message
-        if selected_bench != "None" and selected_val != "None" and b_file_ext == ".ulg" and v_file_ext == ".ulg":
-            st.info("📋 Please select a topic to begin analysis")
-        elif b_df is None and v_df is None:
-            pass  # Removed warning message
-        elif b_df is None:
-            pass  # Removed warning message
-        else:
-            pass  # Removed warning message
+                    pass  # Removed warning message
 
-if (st.session_state.get('analysis_type') == 'Comparative Analysis' and len(st.session_state.uploaded_files) == 1):
-    st.markdown("<div style='margin-top:2em; text-align:center;'>", unsafe_allow_html=True)
-    if st.button('Upload More Files', key='upload_more_files_btn', use_container_width=True):
-        st.session_state.show_upload_area = True
-        st.rerun()
-    st.markdown("</div>", unsafe_allow_html=True)
+        if (st.session_state.get('analysis_type') == 'Comparative Analysis' and len(st.session_state.uploaded_files) == 1):
+            st.markdown("<div style='margin-top:2em; text-align:center;'>", unsafe_allow_html=True)
+            if st.button('Upload More Files', key='upload_more_files_btn', use_container_width=True):
+                st.session_state.show_upload_area = True
+                st.rerun()
+            st.markdown("</div>", unsafe_allow_html=True)
 
     # --- Footer ---
     st.markdown(
