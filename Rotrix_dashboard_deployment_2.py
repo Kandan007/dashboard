@@ -1546,8 +1546,6 @@ def main():
                     with col_topic:
                         st.warning("⚠️ **Topic Selection Required**: Please select a topic to analyze ULG data.")
 
-            # Load and process benchmark and target files
-            import numpy as np
             b_df = None
             v_df = None
             b_file_ext = None
