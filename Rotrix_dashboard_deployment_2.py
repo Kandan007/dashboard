@@ -816,7 +816,7 @@ def main():
                 if selected_file == "None":
                     st.info("📋 Please select a file to begin Single File Analysis")
                     st.stop()
-            
+                
                 motor_type = None
                 file_ext = os.path.splitext(selected_file)[-1].lower() if selected_file != "None" else None
                 # Only show drone type radio for .ulg files
@@ -829,105 +829,107 @@ def main():
                             key="motor_type_single",
                             horizontal=True
                         )
-                
-                with col2:
-                    topic_options = []
-                    loaded_data = None
-                    if selected_file != "None":
-                        file_content = st.session_state.get('selected_single_file_content')
-                        if file_content:
-                            with tempfile.NamedTemporaryFile(delete=False, suffix=file_ext) as tmp_file:
-                                if isinstance(file_content, str):
-                                    tmp_file.write(file_content.encode('utf-8'))
-                                else:
-                                    tmp_file.write(file_content)
-                                tmp_file.flush()
-                                try:
-                                    if file_ext == ".ulg":
-                                        dfs, topics = load_ulog(tmp_file.name)
-                                        loaded_data = dfs
-                                        # Only allow predefined topics
-                                        topic_options = [a for _, a in TOPIC_ASSESSMENT_PAIRS if _ in dfs]
-                                    else:
-                                        df, _ = load_data(tmp_file.name, file_ext, "")
-                                        loaded_data = df
-                                        topic_options = [col for col in df.columns if pd.api.types.is_numeric_dtype(df[col]) and col != 'timestamp_seconds']
-                                except Exception as e:
-                                    st.error(f"Error processing file: {str(e)}")
-                                finally:
-                                    try:
-                                        os.unlink(tmp_file.name)
-                                    except:
-                                        pass
-                
-                    if file_ext == ".ulg":
-                        selected_topic = st.selectbox(
-                            "Select Topic",
-                            topic_options,
-                            key="ulg_topic_single"
-                        )
-                    else:
-                        selected_topics = st.multiselect(
-                            "Select up to 4 columns to plot",
-                            topic_options,
-                            default=topic_options[:1],
-                            max_selections=4,
-                            key="multi_col_select"
-                        )
-                
-                    # Prepare data for plotting
-                    plot_data = []
-                    filtered_dfs_for_data_tab = []
-                    if file_ext == ".ulg":
-                        assessment_to_topic = {a: t for t, a in TOPIC_ASSESSMENT_PAIRS}
-                        topic = assessment_to_topic.get(selected_topic)
-                        if topic and topic in loaded_data:
-                            df = loaded_data[topic].copy()
-                            df = ensure_seconds_column(df)
-                            y_cols = [col for col in ASSESSMENT_Y_AXIS_MAP.get(selected_topic, []) if col in df.columns]
-                            if not y_cols:
-                                st.info("No relevant columns found for this topic.")
-                                st.stop()
-                            filtered_df = df[['timestamp_seconds'] + y_cols].dropna()
-                            
-                            # Convert to relative time starting from 00:00
-                            if 'timestamp_seconds' in filtered_df.columns and len(filtered_df) > 0:
-                                min_time = filtered_df['timestamp_seconds'].min()
-                                filtered_df['timestamp_seconds'] = filtered_df['timestamp_seconds'] - min_time
-                            
-                            stats = filtered_df[y_cols].agg(['mean', 'min', 'max']).T
-                            plot_data = [{
-                                "df": filtered_df,
-                                "y_col": y_col,
-                                "stats": stats.loc[y_col],
-                                "topic": selected_topic
-                            } for y_col in y_cols]
-                            filtered_dfs_for_data_tab = [filtered_df]
-                        else:
-                            st.info("Select a valid topic to plot.")
-                            st.stop()
-                    else:
-                        for topic in selected_topics:
-                            df = loaded_data.copy() if loaded_data is not None else None
-                            if df is not None:
-                                df = ensure_seconds_column(df)
-                                y_cols = [topic]
-                                # For CSV files, always use index as x-axis
-                                filtered_df = df[y_cols].dropna().copy()
-                                filtered_df['Index'] = filtered_df.index
-                                x_col = 'Index'
-                                stats = filtered_df[y_cols].agg(['mean', 'min', 'max']).T
-                                plot_data.append({
-                                    "df": filtered_df,
-                                    "y_cols": y_cols,
-                                    "stats": stats,
-                                    "topic": topic,
-                                    "x_col": x_col
-                                })
-                                filtered_dfs_for_data_tab.append(filtered_df)
+            # For CSV, skip col_mid and move to col2 directly
+            if file_ext != ".ulg":
+                col2 = st.columns([1])[0]
+            with col2:
+                topic_options = []
+                loaded_data = None
+                if selected_file != "None":
+                    file_content = st.session_state.get('selected_single_file_content')
+                    if file_content:
+                        with tempfile.NamedTemporaryFile(delete=False, suffix=file_ext) as tmp_file:
+                            if isinstance(file_content, str):
+                                tmp_file.write(file_content.encode('utf-8'))
                             else:
-                                plot_data.append(None)
-                                filtered_dfs_for_data_tab.append(None)
+                                tmp_file.write(file_content)
+                            tmp_file.flush()
+                            try:
+                                if file_ext == ".ulg":
+                                    dfs, topics = load_ulog(tmp_file.name)
+                                    loaded_data = dfs
+                                    # Only allow predefined topics
+                                    topic_options = [a for _, a in TOPIC_ASSESSMENT_PAIRS if _ in dfs]
+                                else:
+                                    df, _ = load_data(tmp_file.name, file_ext, "")
+                                    loaded_data = df
+                                    topic_options = [col for col in df.columns if pd.api.types.is_numeric_dtype(df[col]) and col != 'timestamp_seconds']
+                            except Exception as e:
+                                st.error(f"Error processing file: {str(e)}")
+                            finally:
+                                try:
+                                    os.unlink(tmp_file.name)
+                                except:
+                                    pass
+                
+                if file_ext == ".ulg":
+                    selected_topic = st.selectbox(
+                        "Select Topic",
+                        topic_options,
+                        key="ulg_topic_single"
+                    )
+                else:
+                    selected_topics = st.multiselect(
+                        "Select up to 4 columns to plot",
+                        topic_options,
+                        default=topic_options[:1],
+                        max_selections=4,
+                        key="multi_col_select"
+                    )
+                
+                # Prepare data for plotting
+                plot_data = []
+                filtered_dfs_for_data_tab = []
+                if file_ext == ".ulg":
+                    assessment_to_topic = {a: t for t, a in TOPIC_ASSESSMENT_PAIRS}
+                    topic = assessment_to_topic.get(selected_topic)
+                    if topic and topic in loaded_data:
+                        df = loaded_data[topic].copy()
+                        df = ensure_seconds_column(df)
+                        y_cols = [col for col in ASSESSMENT_Y_AXIS_MAP.get(selected_topic, []) if col in df.columns]
+                        if not y_cols:
+                            st.info("No relevant columns found for this topic.")
+                            st.stop()
+                        filtered_df = df[['timestamp_seconds'] + y_cols].dropna()
+                        
+                        # Convert to relative time starting from 00:00
+                        if 'timestamp_seconds' in filtered_df.columns and len(filtered_df) > 0:
+                            min_time = filtered_df['timestamp_seconds'].min()
+                            filtered_df['timestamp_seconds'] = filtered_df['timestamp_seconds'] - min_time
+                        
+                        stats = filtered_df[y_cols].agg(['mean', 'min', 'max']).T
+                        plot_data = [{
+                            "df": filtered_df,
+                            "y_col": y_col,
+                            "stats": stats.loc[y_col],
+                            "topic": selected_topic
+                        } for y_col in y_cols]
+                        filtered_dfs_for_data_tab = [filtered_df]
+                    else:
+                        st.info("Select a valid topic to plot.")
+                        st.stop()
+                else:
+                    for topic in selected_topics:
+                        df = loaded_data.copy() if loaded_data is not None else None
+                        if df is not None:
+                            df = ensure_seconds_column(df)
+                            y_cols = [topic]
+                            # For CSV files, always use index as x-axis
+                            filtered_df = df[y_cols].dropna().copy()
+                            filtered_df['Index'] = filtered_df.index
+                            x_col = 'Index'
+                            stats = filtered_df[y_cols].agg(['mean', 'min', 'max']).T
+                            plot_data.append({
+                                "df": filtered_df,
+                                "y_cols": y_cols,
+                                "stats": stats,
+                                "topic": topic,
+                                "x_col": x_col
+                            })
+                            filtered_dfs_for_data_tab.append(filtered_df)
+                        else:
+                            plot_data.append(None)
+                            filtered_dfs_for_data_tab.append(None)
             # Tabs for Plot and Data
             tab_plot, tab_data = st.tabs(["📊 PLOT", "📋 DATA"])
             with tab_plot:
