@@ -1100,67 +1100,66 @@ def main():
                             st.rerun()
                     
                     # X-Axis limits
-                    st.markdown(f"<span style='font-size:1.05rem; color:#444; font-weight:500;'>{'Time' if x_axis == 'timestamp_seconds' else x_axis}</span>", unsafe_allow_html=True)
+                    st.markdown(f"<span style='font-size:0.9rem; color:#444; font-weight:500;'>X-Axis Limits</span>", unsafe_allow_html=True)
                     x_min_col, x_max_col, x_reset_col = st.columns([6, 6, 2])
-                    if x_axis == "timestamp_seconds":
-                        # Use MM:SS text input for limits
-                        if st.session_state.get("reset_x_comparative_flag", False):
-                            x_min_default = seconds_to_mmss(x_min_actual)
-                            x_max_default = seconds_to_mmss(x_max_actual)
-                            st.session_state["reset_x_comparative_flag"] = False
-                        else:
-                            x_min_default = st.session_state.get("x_min_comparative_mmss", seconds_to_mmss(x_min_actual))
-                            x_max_default = st.session_state.get("x_max_comparative_mmss", seconds_to_mmss(x_max_actual))
-                        with x_min_col:
+                    with x_min_col:
+                        if file_ext == ".ulg":
+                            # Check if reset was pressed
+                            if st.session_state.get("reset_x_pressed", False):
+                                x_min_default = seconds_to_mmss(x_min_actual)
+                                st.session_state["reset_x_pressed"] = False
+                            else:
+                                x_min_default = st.session_state.get("x_min_grid_mmss", seconds_to_mmss(x_min_actual))
                             st.markdown("<span style='font-size:0.8rem; color:#666;'>Start (MM:SS)</span>", unsafe_allow_html=True)
-                            x_min_mmss = st.text_input("", value=x_min_default, key="x_min_comparative_mmss")
-                            x_min = mmss_to_seconds(x_min_mmss) if x_min_mmss else x_min_actual
-                        with x_max_col:
-                            st.markdown("<span style='font-size:0.8rem; color:#666;'>End (MM:SS)</span>", unsafe_allow_html=True)
-                            x_max_mmss = st.text_input("", value=x_max_default, key="x_max_comparative_mmss")
-                            x_max = mmss_to_seconds(x_max_mmss) if x_max_mmss else x_max_actual
-                        with x_reset_col:
-                            st.markdown('<div style="margin-top: 28px;"></div>', unsafe_allow_html=True)
-                            if st.button("↺", key="reset_x_comparative", help="Reset X-axis range"):
-                                st.session_state['reset_x_comparative_flag'] = True
-                                st.rerun()
-                    else:
-                        if st.session_state.get("reset_x_comparative_flag", False):
-                            x_min = x_min_actual
-                            x_max = x_max_actual
-                            st.session_state["reset_x_comparative_flag"] = False
+                            x_min = st.text_input("", value=x_min_default, key="x_min_grid_mmss", label_visibility="collapsed")
+                            # Convert MM:SS to seconds for processing
+                            x_min_seconds = mmss_to_seconds(x_min) if x_min else x_min_actual
                         else:
-                            x_min = st.session_state.get("x_min_comparative", x_min_actual)
-                            x_max = st.session_state.get("x_max_comparative", x_max_actual)
-                        with x_min_col:
+                            # Check if reset was pressed
+                            if st.session_state.get("reset_x_pressed", False):
+                                x_min_default = float(x_min_actual)
+                                st.session_state["reset_x_pressed"] = False
+                            else:
+                                x_min_default = st.session_state.get("x_min_grid", float(x_min_actual))
                             st.markdown("<span style='font-size:0.8rem; color:#666;'>Start</span>", unsafe_allow_html=True)
-                            x_min = st.number_input("Start", value=x_min, format="%.2f", key="x_min_comparative", step=1.0)
-                        with x_max_col:
+                            x_min = st.number_input("", value=x_min_default, format="%.2f", key="x_min_grid", step=1.0, label_visibility="collapsed")
+                            x_min_seconds = float(x_min)
+                    with x_max_col:
+                        if file_ext == ".ulg":
+                            # Check if reset was pressed
+                            if st.session_state.get("reset_x_pressed", False):
+                                x_max_default = seconds_to_mmss(x_max_actual)
+                                st.session_state["reset_x_pressed"] = False
+                            else:
+                                x_max_default = st.session_state.get("x_max_grid_mmss", seconds_to_mmss(x_max_actual))
+                            st.markdown("<span style='font-size:0.8rem; color:#666;'>End (MM:SS)</span>", unsafe_allow_html=True)
+                            x_max = st.text_input("", value=x_max_default, key="x_max_grid_mmss", label_visibility="collapsed")
+                            # Convert MM:SS to seconds for processing
+                            x_max_seconds = mmss_to_seconds(x_max) if x_max else x_max_actual
+                        else:
+                            # Check if reset was pressed
+                            if st.session_state.get("reset_x_pressed", False):
+                                x_max_default = float(x_max_actual)
+                                st.session_state["reset_x_pressed"] = False
+                            else:
+                                x_max_default = st.session_state.get("x_max_grid", float(x_max_actual))
                             st.markdown("<span style='font-size:0.8rem; color:#666;'>End</span>", unsafe_allow_html=True)
-                            x_max = st.number_input("End", value=x_max, format="%.2f", key="x_max_comparative", step=1.0)
-                        with x_reset_col:
-                            st.markdown('<div style="margin-top: 28px;"></div>', unsafe_allow_html=True)
-                            if st.button("↺", key="reset_x_comparative", help="Reset X-axis range"):
-                                st.session_state['reset_x_comparative_flag'] = True
-                                st.rerun()
-                    # Y-Axis limits
-                    st.markdown(f"<span style='font-size:1.05rem; color:#444; font-weight:500;'>{y_axis}</span>", unsafe_allow_html=True)
-                    y_min_col, y_max_col, y_reset_col = st.columns([6, 6, 2])
-                    if st.session_state.get("reset_y_comparative_flag", False):
-                        y_min = y_min_val
-                        y_max = y_max_val
-                        st.session_state["reset_y_comparative_flag"] = False
-                    else:
-                        y_min = st.session_state.get("y_min_comparative", y_min_val)
-                        y_max = st.session_state.get("y_max_comparative", y_max_val)
-                    with y_min_col:
-                        y_min = st.number_input("Start", value=y_min, format="%.2f", key="y_min_comparative", step=1.0)
-                    with y_max_col:
-                        y_max = st.number_input("End", value=y_max, format="%.2f", key="y_max_comparative", step=1.0)
-                    with y_reset_col:
-                        st.markdown('<div style="margin-top: 28px;"></div>', unsafe_allow_html=True)
-                        if st.button("↺", key="reset_y_comparative", help="Reset Y-axis range"):
-                            st.session_state['reset_y_comparative_flag'] = True
+                            x_max = st.number_input("", value=x_max_default, format="%.2f", key="x_max_grid", step=1.0, label_visibility="collapsed")
+                            x_max_seconds = float(x_max)
+                    with x_reset_col:
+                        st.markdown('<div style="margin-top: 40px;"></div>', unsafe_allow_html=True)
+                        if st.button("↺", key="reset_x_grid", help="Reset X-axis range"):
+                            # Set flag to reset values
+                            st.session_state["reset_x_pressed"] = True
+                            # Clear the stored values
+                            if "x_min_grid_mmss" in st.session_state:
+                                del st.session_state["x_min_grid_mmss"]
+                            if "x_max_grid_mmss" in st.session_state:
+                                del st.session_state["x_max_grid_mmss"]
+                            if "x_min_grid" in st.session_state:
+                                del st.session_state["x_min_grid"]
+                            if "x_max_grid" in st.session_state:
+                                del st.session_state["x_max_grid"]
                             st.rerun()
                     
                     # Abnormal Points Summary
@@ -1384,10 +1383,10 @@ def main():
                                     # Apply x-axis filtering based on limits
                                     if file_ext == ".ulg" and 'timestamp_seconds' in df.columns:
                                         # Filter by timestamp range for ULG files
-                                        df = df[(df['timestamp_seconds'] >= x_min) & (df['timestamp_seconds'] <= x_max)]
+                                        df = df[(df['timestamp_seconds'] >= x_min_seconds) & (df['timestamp_seconds'] <= x_max_seconds)]
                                     elif file_ext != ".ulg" and 'Index' in df.columns:
                                         # Filter by index range for CSV files
-                                        df = df[(df['Index'] >= x_min) & (df['Index'] <= x_max)]
+                                        df = df[(df['Index'] >= x_min_seconds) & (df['Index'] <= x_max_seconds)]
                                     
                                     # Handle both ULG (y_col) and non-ULG (y_cols) data structures
                                     if "y_col" in pdata:
@@ -1966,14 +1965,14 @@ def main():
                             y_min_val = 0.0
                             y_max_val = 1.0
 
+                        # X-Axis limits
                         st.markdown(f"<span style='font-size:1.05rem; color:#444; font-weight:500;'>{'Time' if x_axis == 'timestamp_seconds' else x_axis}</span>", unsafe_allow_html=True)
                         x_min_col, x_max_col, x_reset_col = st.columns([6, 6, 2])
                         if x_axis == "timestamp_seconds":
-                            # Use MM:SS text input for limits
-                            if st.session_state.get("reset_x_comparative_flag", False):
+                            if st.session_state.get("reset_x_comparative_pressed", False):
                                 x_min_default = seconds_to_mmss(x_min_val)
                                 x_max_default = seconds_to_mmss(x_max_val)
-                                st.session_state["reset_x_comparative_flag"] = False
+                                st.session_state["reset_x_comparative_pressed"] = False
                             else:
                                 x_min_default = st.session_state.get("x_min_comparative_mmss", seconds_to_mmss(x_min_val))
                                 x_max_default = st.session_state.get("x_max_comparative_mmss", seconds_to_mmss(x_max_val))
@@ -1988,16 +1987,17 @@ def main():
                             with x_reset_col:
                                 st.markdown('<div style="margin-top: 28px;"></div>', unsafe_allow_html=True)
                                 if st.button("↺", key="reset_x_comparative", help="Reset X-axis range"):
-                                    st.session_state['reset_x_comparative_flag'] = True
+                                    st.session_state['reset_x_comparative_pressed'] = True
                                     st.rerun()
                         else:
-                            if st.session_state.get("reset_x_comparative_flag", False):
+                            # --- FIX: Use a flag to reset number_input values safely ---
+                            if st.session_state.get('reset_x_comparative_flag', False):
                                 x_min = x_min_val
                                 x_max = x_max_val
-                                st.session_state["reset_x_comparative_flag"] = False
+                                st.session_state['reset_x_comparative_flag'] = False
                             else:
-                                x_min = st.session_state.get("x_min_comparative", x_min_val)
-                                x_max = st.session_state.get("x_max_comparative", x_max_val)
+                                x_min = st.session_state.get('x_min_comparative', x_min_val)
+                                x_max = st.session_state.get('x_max_comparative', x_max_val)
                             with x_min_col:
                                 st.markdown("<span style='font-size:0.8rem; color:#666;'>Start</span>", unsafe_allow_html=True)
                                 x_min = st.number_input("Start", value=x_min, format="%.2f", key="x_min_comparative", step=1.0)
@@ -2009,16 +2009,18 @@ def main():
                                 if st.button("↺", key="reset_x_comparative", help="Reset X-axis range"):
                                     st.session_state['reset_x_comparative_flag'] = True
                                     st.rerun()
+
                         # Y-Axis limits
                         st.markdown(f"<span style='font-size:1.05rem; color:#444; font-weight:500;'>{y_axis}</span>", unsafe_allow_html=True)
                         y_min_col, y_max_col, y_reset_col = st.columns([6, 6, 2])
-                        if st.session_state.get("reset_y_comparative_flag", False):
+                        # --- FIX: Use a flag to reset number_input values safely ---
+                        if st.session_state.get('reset_y_comparative_flag', False):
                             y_min = y_min_val
                             y_max = y_max_val
-                            st.session_state["reset_y_comparative_flag"] = False
+                            st.session_state['reset_y_comparative_flag'] = False
                         else:
-                            y_min = st.session_state.get("y_min_comparative", y_min_val)
-                            y_max = st.session_state.get("y_max_comparative", y_max_val)
+                            y_min = st.session_state.get('y_min_comparative', y_min_val)
+                            y_max = st.session_state.get('y_max_comparative', y_max_val)
                         with y_min_col:
                             y_min = st.number_input("Start", value=y_min, format="%.2f", key="y_min_comparative", step=1.0)
                         with y_max_col:
