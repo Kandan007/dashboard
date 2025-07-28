@@ -1205,7 +1205,7 @@ def main():
                             
                             with col1:
                                 st.markdown(f"""
-                                <div style='margin: 4px 0; padding: 6px; border-left: 3px solid {severity_color}; background-color: #f8f9fa;'>
+                                <div style='margin: 4px 0; padding: 6px; border-left: 5px solid {severity_color}; background-color: #f8f9fa;'>
                                     <div style='font-weight: 600; color: #2c3e50;'>{detail["name"]}</div>
                                     <div style='font-size: 0.9em; color: #7f8c8d;'>
                                         {detail["count"]:,} abnormal / {detail["total"]:,} total ({detail["percentage"]:.1f}%)
