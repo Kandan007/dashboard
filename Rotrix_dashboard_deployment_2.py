@@ -2162,6 +2162,36 @@ def main():
                             plot_bgcolor='white',
                             yaxis=dict(showticklabels=True, title=y_axis)
                         )
+                        
+                        # Update x-axis to show MM:SS if timestamp_seconds is used
+                        if x_axis == "timestamp_seconds":
+                            x_title = "Time (MM:SS)"
+                            tick_vals, tick_texts = get_timestamp_ticks(b_filtered[x_axis])
+                            if plot_mode == "Superimposed":
+                                fig.update_xaxes(
+                                    tickvals=tick_vals,
+                                    ticktext=tick_texts,
+                                    title_text=x_title,
+                                    type='linear'
+                                )
+                            else:  # Separate
+                                fig.update_xaxes(
+                                    tickvals=tick_vals,
+                                    ticktext=tick_texts,
+                                    title_text=x_title,
+                                    type='linear',
+                                    row=1, col=1
+                                )
+                                fig.update_xaxes(
+                                    tickvals=tick_vals,
+                                    ticktext=tick_texts,
+                                    title_text=x_title,
+                                    type='linear',
+                                    row=2, col=1
+                                )
+                        else:
+                            fig.update_xaxes(title_text=x_axis)
+                        
                         st.plotly_chart(fig, use_container_width=True)
                         
                         # Abnormal Points Table
