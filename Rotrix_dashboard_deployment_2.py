@@ -1786,349 +1786,352 @@ def main():
                             st.warning("No Target data loaded. Please check your file selection.")
                 
                 with tab1:
-                    # Get data for comparative analysis
-                    b_df = st.session_state.get('b_df')
-                    v_df = st.session_state.get('v_df')
-                    
-                    if b_df is None or v_df is None or b_df.empty or v_df.empty:
-                        st.warning("No data loaded for plotting. Please check your file selection and topic.")
-                        st.stop()
-                    
-                    # Ensure timestamp columns and normalize
-                    b_df = ensure_seconds_column(b_df)
-                    v_df = ensure_seconds_column(v_df)
-                    if 'timestamp_seconds' in b_df.columns:
-                        b_df['timestamp_seconds'] = b_df['timestamp_seconds'] - b_df['timestamp_seconds'].min()
-                    if 'timestamp_seconds' in v_df.columns:
-                        v_df['timestamp_seconds'] = v_df['timestamp_seconds'] - v_df['timestamp_seconds'].min()
-                    st.session_state.b_df = b_df
-                    st.session_state.v_df = v_df
-                    
-                    # Get axis options
-                    x_axis_options = []
-                    y_axis_options = []
-                    if 'timestamp_seconds' in b_df.columns:
-                        x_axis_options.append('timestamp_seconds')
-                    if 'Index' in b_df.columns:
-                        x_axis_options.append('Index')
-                    
-                    numeric_cols = get_numeric_columns(b_df)
-                    exclude_cols = {"timestamp", "timestamp_sample"}
-                    x_axis_options += [col for col in numeric_cols if col not in x_axis_options and col not in exclude_cols]
-                    y_axis_options += [col for col in numeric_cols if col not in y_axis_options and col not in exclude_cols]
-                    
-                    # Fallbacks
-                    if not x_axis_options:
-                        b_df['Index'] = b_df.index
-                        v_df['Index'] = v_df.index
-                        x_axis_options = ['Index']
+                    # Move plot mode selection to the right of the plot at the top
+                    plot_col, mode_col = st.columns([8, 2])
+                    with mode_col:
+                        plot_mode = st.radio(["Superimposed", "Separate"], horizontal=True, key="comparative_plot_mode")
+                    with plot_col:
+                        # Get data for comparative analysis
+                        b_df = st.session_state.get('b_df')
+                        v_df = st.session_state.get('v_df')
+                        
+                        if b_df is None or v_df is None or b_df.empty or v_df.empty:
+                            st.warning("No data loaded for plotting. Please check your file selection and topic.")
+                            st.stop()
+                        
+                        # Ensure timestamp columns and normalize
+                        b_df = ensure_seconds_column(b_df)
+                        v_df = ensure_seconds_column(v_df)
+                        if 'timestamp_seconds' in b_df.columns:
+                            b_df['timestamp_seconds'] = b_df['timestamp_seconds'] - b_df['timestamp_seconds'].min()
+                        if 'timestamp_seconds' in v_df.columns:
+                            v_df['timestamp_seconds'] = v_df['timestamp_seconds'] - v_df['timestamp_seconds'].min()
                         st.session_state.b_df = b_df
                         st.session_state.v_df = v_df
-                    if not y_axis_options:
-                        b_df['Index'] = b_df.index
-                        v_df['Index'] = v_df.index
-                        y_axis_options = ['Index']
-                        st.session_state.b_df = b_df
-                        st.session_state.v_df = v_df
-                    # Always add 'Index' for CSV files
-                    if b_file_ext == '.csv' and 'Index' not in x_axis_options:
-                        b_df['Index'] = b_df.index
-                        v_df['Index'] = v_df.index
-                        x_axis_options = ['Index'] + [col for col in x_axis_options if col != 'Index']
-                        st.session_state.b_df = b_df
-                        st.session_state.v_df = v_df
-                    # Default axis selection
-                    if b_file_ext == ".ulg":
-                        default_x = "timestamp_seconds" if "timestamp_seconds" in x_axis_options else ("Index" if "Index" in x_axis_options else x_axis_options[0])
-                    else:
-                        default_x = "Index" if "Index" in x_axis_options else ("timestamp_seconds" if "timestamp_seconds" in x_axis_options else x_axis_options[0])
-                    preferred_y_columns = ['Thrust (kgf)', 'cD2detailpeak', 'Thrust']
-                    if b_file_ext == ".csv":
-                        default_y = next((col for col in preferred_y_columns if col in y_axis_options), y_axis_options[0] if y_axis_options else None)
-                    elif b_file_ext == ".ulg" and selected_assessment in ASSESSMENT_Y_AXIS_MAP:
-                        allowed_y_axis = [col for col in ASSESSMENT_Y_AXIS_MAP[selected_assessment] if col in y_axis_options]
-                        default_y = allowed_y_axis[0] if allowed_y_axis else (y_axis_options[0] if y_axis_options else None)
-                    else:
-                        default_y = y_axis_options[0] if y_axis_options else None
-                    if 'x_axis_comparative' not in st.session_state or st.session_state.x_axis_comparative not in x_axis_options:
-                        st.session_state.x_axis_comparative = default_x
-                    if 'y_axis_comparative' not in st.session_state or st.session_state.y_axis_comparative not in y_axis_options:
-                        st.session_state.y_axis_comparative = default_y
-                    
-                    # Metrics and parameters layout
-                    metrics_col, param_col = st.columns([0.8, 0.2])
-                    
-                    with param_col:
-                        st.markdown("""
-                        <div style='display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;'>
-                            <span style='font-size: 1.2rem;'>📝</span>
-                            <span style='font-size: 1.1rem; font-weight: 600;'>Parameters</span>
-                        </div>
-                        """, unsafe_allow_html=True)
                         
-                        x_axis_display_cmp = [get_display_name(col) for col in x_axis_options]
-                        y_axis_display_cmp = [get_display_name(col) for col in y_axis_options]
+                        # Get axis options
+                        x_axis_options = []
+                        y_axis_options = []
+                        if 'timestamp_seconds' in b_df.columns:
+                            x_axis_options.append('timestamp_seconds')
+                        if 'Index' in b_df.columns:
+                            x_axis_options.append('Index')
                         
-                        # Ensure we have valid options
-                        if not x_axis_options or not y_axis_options:
-                            st.error("No valid axis options available. Please check your data files.")
-                            return
+                        numeric_cols = get_numeric_columns(b_df)
+                        exclude_cols = {"timestamp", "timestamp_sample"}
+                        x_axis_options += [col for col in numeric_cols if col not in x_axis_options and col not in exclude_cols]
+                        y_axis_options += [col for col in numeric_cols if col not in y_axis_options and col not in exclude_cols]
                         
-                        current_x_axis = st.session_state.get('x_axis_comparative', x_axis_options[0] if x_axis_options else None)
-                        current_y_axis = st.session_state.get('y_axis_comparative', y_axis_options[0] if y_axis_options else None)
-                        
-                        # Safe index calculation for X-axis
-                        try:
-                            current_x_display = get_display_name(current_x_axis) if current_x_axis else x_axis_display_cmp[0]
-                            x_index = x_axis_display_cmp.index(current_x_display) if current_x_display in x_axis_display_cmp else 0
-                        except (ValueError, IndexError):
-                            x_index = 0
-                        
-                        x_axis_selected_display_cmp = st.selectbox(
-                            "X-Axis", x_axis_display_cmp, key="x_axis_comparative_display",
-                            index=x_index
-                        )
-                        
-                        # Safe conversion from display name to actual axis name
-                        try:
-                            x_axis = x_axis_options[x_axis_display_cmp.index(x_axis_selected_display_cmp)]
-                        except (ValueError, IndexError):
-                            x_axis = x_axis_options[0] if x_axis_options else None
-                        
-                        st.session_state['x_axis_comparative'] = x_axis
-                        
-                        # Safe index calculation for Y-axis
-                        try:
-                            current_y_display = get_display_name(current_y_axis) if current_y_axis else y_axis_display_cmp[0]
-                            y_index = y_axis_display_cmp.index(current_y_display) if current_y_display in y_axis_display_cmp else 0
-                        except (ValueError, IndexError):
-                            y_index = 0
-                        
-                        y_axis_selected_display_cmp = st.selectbox(
-                            "Y-Axis", y_axis_display_cmp, key="y_axis_comparative_display",
-                            index=y_index
-                        )
-                        
-                        # Safe conversion from display name to actual axis name
-                        try:
-                            y_axis = y_axis_options[y_axis_display_cmp.index(y_axis_selected_display_cmp)]
-                        except (ValueError, IndexError):
-                            y_axis = y_axis_options[0] if y_axis_options else None
-                        
-                        st.session_state['y_axis_comparative'] = y_axis
-                        
-                        # Validate axis selections
-                        if x_axis is None or y_axis is None:
-                            st.error("Invalid axis selection. Please check your data files.")
-                            return
-                        
-                        if x_axis not in b_df.columns or x_axis not in v_df.columns:
-                            st.error(f"X-axis '{x_axis}' not found in one or both datasets.")
-                            return
-                        
-                        if y_axis not in b_df.columns or y_axis not in v_df.columns:
-                            st.error(f"Y-axis '{y_axis}' not found in one or both datasets.")
-                            return
-                        
-                        z_threshold_col, z_reset_col = st.columns([8, 2])
-                        with z_threshold_col:
-                            # Check if reset was pressed
-                            if st.session_state.get("reset_z_comparative_pressed", False):
-                                z_threshold_default = 2.5
-                                st.session_state["reset_z_comparative_pressed"] = False
-                            else:
-                                z_threshold_default = st.session_state.get("z_threshold_comparative", 2.5)
-                            z_threshold = st.slider("Z-Score Threshold", 1.0, 5.0, z_threshold_default, 0.01, key="z_threshold_comparative")
-                        with z_reset_col:
-                            st.markdown('<div style="margin-top: 28px;"></div>', unsafe_allow_html=True)
-                            if st.button("↺", key="reset_z_comparative", help="Reset Z-Score threshold"):
-                                st.session_state["reset_z_comparative_pressed"] = True
-                                if "z_threshold_comparative" in st.session_state:
-                                    del st.session_state["z_threshold_comparative"]
-                                st.rerun()
-                        
-                        # Axis range controls
-                        # Calculate x-axis limits from both benchmark and validation datasets
-                        b_x_min = float(b_df[x_axis].min()) if x_axis in b_df.columns else 0.0
-                        b_x_max = float(b_df[x_axis].max()) if x_axis in b_df.columns else 1.0
-                        v_x_min = float(v_df[x_axis].min()) if x_axis in v_df.columns else 0.0
-                        v_x_max = float(v_df[x_axis].max()) if x_axis in v_df.columns else 1.0
-                        
-                        # Use the overall min and max from both datasets
-                        x_min_val = min(b_x_min, v_x_min)
-                        x_max_val = max(b_x_max, v_x_max)
-                        
-                        if y_axis in b_df.columns and y_axis in v_df.columns:
-                            y_min_val = float(min(b_df[y_axis].min(), v_df[y_axis].min()))
-                            y_max_val = float(max(b_df[y_axis].max(), v_df[y_axis].max()))
+                        # Fallbacks
+                        if not x_axis_options:
+                            b_df['Index'] = b_df.index
+                            v_df['Index'] = v_df.index
+                            x_axis_options = ['Index']
+                            st.session_state.b_df = b_df
+                            st.session_state.v_df = v_df
+                        if not y_axis_options:
+                            b_df['Index'] = b_df.index
+                            v_df['Index'] = v_df.index
+                            y_axis_options = ['Index']
+                            st.session_state.b_df = b_df
+                            st.session_state.v_df = v_df
+                        # Always add 'Index' for CSV files
+                        if b_file_ext == '.csv' and 'Index' not in x_axis_options:
+                            b_df['Index'] = b_df.index
+                            v_df['Index'] = v_df.index
+                            x_axis_options = ['Index'] + [col for col in x_axis_options if col != 'Index']
+                            st.session_state.b_df = b_df
+                            st.session_state.v_df = v_df
+                        # Default axis selection
+                        if b_file_ext == ".ulg":
+                            default_x = "timestamp_seconds" if "timestamp_seconds" in x_axis_options else ("Index" if "Index" in x_axis_options else x_axis_options[0])
                         else:
-                            y_min_val = 0.0
-                            y_max_val = 1.0
-
-                        # X-Axis limits
-                        st.markdown(f"<span style='font-size:1.05rem; color:#444; font-weight:500;'>{'Time' if x_axis == 'timestamp_seconds' else x_axis}</span>", unsafe_allow_html=True)
-                        x_min_col, x_max_col, x_reset_col = st.columns([4, 4, 1])
-                        if x_axis == "timestamp_seconds":
-                            if st.session_state.get("reset_x_comparative_pressed", False):
-                                x_min_default = seconds_to_mmss(x_min_val)
-                                x_max_default = seconds_to_mmss(x_max_val)
-                                st.session_state["reset_x_comparative_pressed"] = False
-                            else:
-                                x_min_default = st.session_state.get("x_min_comparative_mmss", seconds_to_mmss(x_min_val))
-                                x_max_default = st.session_state.get("x_max_comparative_mmss", seconds_to_mmss(x_max_val))
-                            with x_min_col:
-                                st.markdown("<span style='font-size:0.8rem; color:#666;'>Start (MM:SS)</span>", unsafe_allow_html=True)
-                                x_min_mmss = st.text_input("", value=x_min_default, key="x_min_comparative_mmss")
-                                x_min = mmss_to_seconds(x_min_mmss) if x_min_mmss else x_min_val
-                            with x_max_col:
-                                st.markdown("<span style='font-size:0.8rem; color:#666;'>End (MM:SS)</span>", unsafe_allow_html=True)
-                                x_max_mmss = st.text_input("", value=x_max_default, key="x_max_comparative_mmss")
-                                x_max = mmss_to_seconds(x_max_mmss) if x_max_mmss else x_max_val
-                            with x_reset_col:
-                                if st.button("↺", key="reset_x_comparative", help="Reset X-axis range"):
-                                    st.session_state['reset_x_comparative_pressed'] = True
+                            default_x = "Index" if "Index" in x_axis_options else ("timestamp_seconds" if "timestamp_seconds" in x_axis_options else x_axis_options[0])
+                        preferred_y_columns = ['Thrust (kgf)', 'cD2detailpeak', 'Thrust']
+                        if b_file_ext == ".csv":
+                            default_y = next((col for col in preferred_y_columns if col in y_axis_options), y_axis_options[0] if y_axis_options else None)
+                        elif b_file_ext == ".ulg" and selected_assessment in ASSESSMENT_Y_AXIS_MAP:
+                            allowed_y_axis = [col for col in ASSESSMENT_Y_AXIS_MAP[selected_assessment] if col in y_axis_options]
+                            default_y = allowed_y_axis[0] if allowed_y_axis else (y_axis_options[0] if y_axis_options else None)
+                        else:
+                            default_y = y_axis_options[0] if y_axis_options else None
+                        if 'x_axis_comparative' not in st.session_state or st.session_state.x_axis_comparative not in x_axis_options:
+                            st.session_state.x_axis_comparative = default_x
+                        if 'y_axis_comparative' not in st.session_state or st.session_state.y_axis_comparative not in y_axis_options:
+                            st.session_state.y_axis_comparative = default_y
+                        
+                        # Metrics and parameters layout
+                        metrics_col, param_col = st.columns([0.8, 0.2])
+                        
+                        with param_col:
+                            st.markdown("""
+                            <div style='display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;'>
+                                <span style='font-size: 1.2rem;'>📝</span>
+                                <span style='font-size: 1.1rem; font-weight: 600;'>Parameters</span>
+                            </div>
+                            """, unsafe_allow_html=True)
+                            
+                            x_axis_display_cmp = [get_display_name(col) for col in x_axis_options]
+                            y_axis_display_cmp = [get_display_name(col) for col in y_axis_options]
+                            
+                            # Ensure we have valid options
+                            if not x_axis_options or not y_axis_options:
+                                st.error("No valid axis options available. Please check your data files.")
+                                return
+                            
+                            current_x_axis = st.session_state.get('x_axis_comparative', x_axis_options[0] if x_axis_options else None)
+                            current_y_axis = st.session_state.get('y_axis_comparative', y_axis_options[0] if y_axis_options else None)
+                            
+                            # Safe index calculation for X-axis
+                            try:
+                                current_x_display = get_display_name(current_x_axis) if current_x_axis else x_axis_display_cmp[0]
+                                x_index = x_axis_display_cmp.index(current_x_display) if current_x_display in x_axis_display_cmp else 0
+                            except (ValueError, IndexError):
+                                x_index = 0
+                            
+                            x_axis_selected_display_cmp = st.selectbox(
+                                "X-Axis", x_axis_display_cmp, key="x_axis_comparative_display",
+                                index=x_index
+                            )
+                            
+                            # Safe conversion from display name to actual axis name
+                            try:
+                                x_axis = x_axis_options[x_axis_display_cmp.index(x_axis_selected_display_cmp)]
+                            except (ValueError, IndexError):
+                                x_axis = x_axis_options[0] if x_axis_options else None
+                            
+                            st.session_state['x_axis_comparative'] = x_axis
+                            
+                            # Safe index calculation for Y-axis
+                            try:
+                                current_y_display = get_display_name(current_y_axis) if current_y_axis else y_axis_display_cmp[0]
+                                y_index = y_axis_display_cmp.index(current_y_display) if current_y_display in y_axis_display_cmp else 0
+                            except (ValueError, IndexError):
+                                y_index = 0
+                            
+                            y_axis_selected_display_cmp = st.selectbox(
+                                "Y-Axis", y_axis_display_cmp, key="y_axis_comparative_display",
+                                index=y_index
+                            )
+                            
+                            # Safe conversion from display name to actual axis name
+                            try:
+                                y_axis = y_axis_options[y_axis_display_cmp.index(y_axis_selected_display_cmp)]
+                            except (ValueError, IndexError):
+                                y_axis = y_axis_options[0] if y_axis_options else None
+                            
+                            st.session_state['y_axis_comparative'] = y_axis
+                            
+                            # Validate axis selections
+                            if x_axis is None or y_axis is None:
+                                st.error("Invalid axis selection. Please check your data files.")
+                                return
+                            
+                            if x_axis not in b_df.columns or x_axis not in v_df.columns:
+                                st.error(f"X-axis '{x_axis}' not found in one or both datasets.")
+                                return
+                            
+                            if y_axis not in b_df.columns or y_axis not in v_df.columns:
+                                st.error(f"Y-axis '{y_axis}' not found in one or both datasets.")
+                                return
+                            
+                            z_threshold_col, z_reset_col = st.columns([8, 2])
+                            with z_threshold_col:
+                                # Check if reset was pressed
+                                if st.session_state.get("reset_z_comparative_pressed", False):
+                                    z_threshold_default = 2.5
+                                    st.session_state["reset_z_comparative_pressed"] = False
+                                else:
+                                    z_threshold_default = st.session_state.get("z_threshold_comparative", 2.5)
+                                z_threshold = st.slider("Z-Score Threshold", 1.0, 5.0, z_threshold_default, 0.01, key="z_threshold_comparative")
+                            with z_reset_col:
+                                st.markdown('<div style="margin-top: 28px;"></div>', unsafe_allow_html=True)
+                                if st.button("↺", key="reset_z_comparative", help="Reset Z-Score threshold"):
+                                    st.session_state["reset_z_comparative_pressed"] = True
+                                    if "z_threshold_comparative" in st.session_state:
+                                        del st.session_state["z_threshold_comparative"]
                                     st.rerun()
-                        else:
-                            if st.session_state.get('reset_x_comparative_flag', False):
-                                x_min = x_min_val
-                                x_max = x_max_val
-                                st.session_state['reset_x_comparative_flag'] = False
+                            
+                            # Axis range controls
+                            # Calculate x-axis limits from both benchmark and validation datasets
+                            b_x_min = float(b_df[x_axis].min()) if x_axis in b_df.columns else 0.0
+                            b_x_max = float(b_df[x_axis].max()) if x_axis in b_df.columns else 1.0
+                            v_x_min = float(v_df[x_axis].min()) if x_axis in v_df.columns else 0.0
+                            v_x_max = float(v_df[x_axis].max()) if x_axis in v_df.columns else 1.0
+                            
+                            # Use the overall min and max from both datasets
+                            x_min_val = min(b_x_min, v_x_min)
+                            x_max_val = max(b_x_max, v_x_max)
+                            
+                            if y_axis in b_df.columns and y_axis in v_df.columns:
+                                y_min_val = float(min(b_df[y_axis].min(), v_df[y_axis].min()))
+                                y_max_val = float(max(b_df[y_axis].max(), v_df[y_axis].max()))
                             else:
-                                x_min = st.session_state.get('x_min_comparative', x_min_val)
-                                x_max = st.session_state.get('x_max_comparative', x_max_val)
-                            with x_min_col:
+                                y_min_val = 0.0
+                                y_max_val = 1.0
+
+                            # X-Axis limits
+                            st.markdown(f"<span style='font-size:1.05rem; color:#444; font-weight:500;'>{'Time' if x_axis == 'timestamp_seconds' else x_axis}</span>", unsafe_allow_html=True)
+                            x_min_col, x_max_col, x_reset_col = st.columns([4, 4, 1])
+                            if x_axis == "timestamp_seconds":
+                                if st.session_state.get("reset_x_comparative_pressed", False):
+                                    x_min_default = seconds_to_mmss(x_min_val)
+                                    x_max_default = seconds_to_mmss(x_max_val)
+                                    st.session_state["reset_x_comparative_pressed"] = False
+                                else:
+                                    x_min_default = st.session_state.get("x_min_comparative_mmss", seconds_to_mmss(x_min_val))
+                                    x_max_default = st.session_state.get("x_max_comparative_mmss", seconds_to_mmss(x_max_val))
+                                with x_min_col:
+                                    st.markdown("<span style='font-size:0.8rem; color:#666;'>Start (MM:SS)</span>", unsafe_allow_html=True)
+                                    x_min_mmss = st.text_input("", value=x_min_default, key="x_min_comparative_mmss")
+                                    x_min = mmss_to_seconds(x_min_mmss) if x_min_mmss else x_min_val
+                                with x_max_col:
+                                    st.markdown("<span style='font-size:0.8rem; color:#666;'>End (MM:SS)</span>", unsafe_allow_html=True)
+                                    x_max_mmss = st.text_input("", value=x_max_default, key="x_max_comparative_mmss")
+                                    x_max = mmss_to_seconds(x_max_mmss) if x_max_mmss else x_max_val
+                                with x_reset_col:
+                                    if st.button("↺", key="reset_x_comparative", help="Reset X-axis range"):
+                                        st.session_state['reset_x_comparative_pressed'] = True
+                                        st.rerun()
+                            else:
+                                if st.session_state.get('reset_x_comparative_flag', False):
+                                    x_min = x_min_val
+                                    x_max = x_max_val
+                                    st.session_state['reset_x_comparative_flag'] = False
+                                else:
+                                    x_min = st.session_state.get('x_min_comparative', x_min_val)
+                                    x_max = st.session_state.get('x_max_comparative', x_max_val)
+                                with x_min_col:
+                                    st.markdown("<span style='font-size:0.8rem; color:#666;'>Start</span>", unsafe_allow_html=True)
+                                    x_min = st.number_input("Start", value=x_min, format="%.2f", key="x_min_comparative", step=1.0, label_visibility="collapsed")
+                                with x_max_col:
+                                    st.markdown("<span style='font-size:0.8rem; color:#666;'>End</span>", unsafe_allow_html=True)
+                                    x_max = st.number_input("End", value=x_max, format="%.2f", key="x_max_comparative", step=1.0, label_visibility="collapsed")
+                                with x_reset_col:
+                                    st.markdown('<div style="margin-top: 40px;"></div>', unsafe_allow_html=True)
+                                    if st.button("↺", key="reset_x_comparative", help="Reset X-axis range"):
+                                        st.session_state['reset_x_comparative_flag'] = True
+                                        st.rerun()
+
+                            # Y-Axis limits
+                            st.markdown(f"<span style='font-size:1.05rem; color:#444; font-weight:500;'>{y_axis}</span>", unsafe_allow_html=True)
+                            y_min_col, y_max_col, y_reset_col = st.columns([4, 4, 1])
+                            if st.session_state.get('reset_y_comparative_flag', False):
+                                y_min = y_min_val
+                                y_max = y_max_val
+                                st.session_state['reset_y_comparative_flag'] = False
+                            else:
+                                y_min = st.session_state.get('y_min_comparative', y_min_val)
+                                y_max = st.session_state.get('y_max_comparative', y_max_val)
+                            with y_min_col:
                                 st.markdown("<span style='font-size:0.8rem; color:#666;'>Start</span>", unsafe_allow_html=True)
-                                x_min = st.number_input("Start", value=x_min, format="%.2f", key="x_min_comparative", step=1.0, label_visibility="collapsed")
-                            with x_max_col:
+                                y_min = st.number_input("Start", value=y_min, format="%.2f", key="y_min_comparative", step=1.0, label_visibility="collapsed")
+                            with y_max_col:
                                 st.markdown("<span style='font-size:0.8rem; color:#666;'>End</span>", unsafe_allow_html=True)
-                                x_max = st.number_input("End", value=x_max, format="%.2f", key="x_max_comparative", step=1.0, label_visibility="collapsed")
-                            with x_reset_col:
+                                y_max = st.number_input("End", value=y_max, format="%.2f", key="y_max_comparative", step=1.0, label_visibility="collapsed")
+                            with y_reset_col:
                                 st.markdown('<div style="margin-top: 40px;"></div>', unsafe_allow_html=True)
-                                if st.button("↺", key="reset_x_comparative", help="Reset X-axis range"):
-                                    st.session_state['reset_x_comparative_flag'] = True
+                                if st.button("↺", key="reset_y_comparative", help="Reset Y-axis range"):
+                                    st.session_state['reset_y_comparative_flag'] = True
                                     st.rerun()
+                        
+                        with metrics_col:
+                            # Calculate metrics
+                            b_filtered = b_df[(b_df[x_axis] >= x_min) & (b_df[x_axis] <= x_max) & (b_df[y_axis] >= y_min) & (b_df[y_axis] <= y_max)]
+                            v_filtered = v_df[(v_df[x_axis] >= x_min) & (v_df[x_axis] <= x_max) & (v_df[y_axis] >= y_min) & (v_df[y_axis] <= y_max)]
+                            
+                            if x_axis == 'timestamp_seconds':
+                                b_filtered, v_filtered, _ = resample_to_common_time(b_filtered, v_filtered)
 
-                        # Y-Axis limits
-                        st.markdown(f"<span style='font-size:1.05rem; color:#444; font-weight:500;'>{y_axis}</span>", unsafe_allow_html=True)
-                        y_min_col, y_max_col, y_reset_col = st.columns([4, 4, 1])
-                        if st.session_state.get('reset_y_comparative_flag', False):
-                            y_min = y_min_val
-                            y_max = y_max_val
-                            st.session_state['reset_y_comparative_flag'] = False
-                        else:
-                            y_min = st.session_state.get('y_min_comparative', y_min_val)
-                            y_max = st.session_state.get('y_max_comparative', y_max_val)
-                        with y_min_col:
-                            st.markdown("<span style='font-size:0.8rem; color:#666;'>Start</span>", unsafe_allow_html=True)
-                            y_min = st.number_input("Start", value=y_min, format="%.2f", key="y_min_comparative", step=1.0, label_visibility="collapsed")
-                        with y_max_col:
-                            st.markdown("<span style='font-size:0.8rem; color:#666;'>End</span>", unsafe_allow_html=True)
-                            y_max = st.number_input("End", value=y_max, format="%.2f", key="y_max_comparative", step=1.0, label_visibility="collapsed")
-                        with y_reset_col:
-                            st.markdown('<div style="margin-top: 40px;"></div>', unsafe_allow_html=True)
-                            if st.button("↺", key="reset_y_comparative", help="Reset Y-axis range"):
-                                st.session_state['reset_y_comparative_flag'] = True
-                                st.rerun()
-                    
-                    with metrics_col:
-                        # Calculate metrics
-                        b_filtered = b_df[(b_df[x_axis] >= x_min) & (b_df[x_axis] <= x_max) & (b_df[y_axis] >= y_min) & (b_df[y_axis] <= y_max)]
-                        v_filtered = v_df[(v_df[x_axis] >= x_min) & (v_df[x_axis] <= x_max) & (v_df[y_axis] >= y_min) & (v_df[y_axis] <= y_max)]
-                        
-                        if x_axis == 'timestamp_seconds':
-                            b_filtered, v_filtered, _ = resample_to_common_time(b_filtered, v_filtered)
-
-                        merged = pd.DataFrame()
-                        merged['benchmark'] = b_filtered[y_axis].reset_index(drop=True)
-                        merged['target'] = v_filtered[y_axis].reset_index(drop=True)
-                        merged['benchmark_x'] = b_filtered[x_axis].reset_index(drop=True)
-                        merged['target_x'] = v_filtered[x_axis].reset_index(drop=True)
-                        merged['abs_diff'] = abs(merged['target'] - merged['benchmark'])
-                        merged['rel_diff'] = merged['abs_diff'] / (abs(merged['benchmark']) + 1e-10)
-                        
-                        rmse = np.sqrt(np.mean((merged['target'] - merged['benchmark']) ** 2))
-                        combined_range = max(merged['benchmark'].max(), merged['target'].max()) - min(merged['benchmark'].min(), merged['target'].min())
-                        similarity = 1 - (rmse / combined_range) if combined_range != 0 else (1.0 if rmse == 0 else 0.0)
-                        similarity_index = similarity * 100
-                        
-                        merged["Difference"] = merged['target'] - merged['benchmark']
-                        # Use detect_abnormalities helper for abnormal points
-                        abnormal_mask, z_scores = detect_abnormalities(merged["Difference"], threshold=z_threshold)
-                        merged["Z_Score"] = z_scores
-                        merged = merged.reset_index(drop=True)
-                        abnormal_points = merged[abnormal_mask]
-                        abnormal_count = int(abnormal_mask.sum())
-                        
-                        # Display metrics
-                        metrics_cols = st.columns(3)
-                        with metrics_cols[0]:
-                            fig1 = go.Figure(go.Indicator(
-                                mode="gauge+number",
-                                value=rmse,
-                                title={'text': "RMSE"},
-                                number={'valueformat': ',.2f'},
-                                domain={'x': [0, 1], 'y': [0, 1]},
-                                gauge={
-                                    'axis': {'range': [0, max(rmse * 2, 1)], 'tickformat': ',.2f'},
-                                    'bar': {'color': "darkblue"},
-                                    'steps': [
-                                        {'range': [0, rmse], 'color': "lightgray"},
-                                        {'range': [rmse, max(rmse * 2, 1)], 'color': "gray"}
-                                    ]
-                                }
-                            ))
-                            fig1.update_layout(width=200, height=120, margin=dict(t=50, b=10), paper_bgcolor="rgba(0,0,0,0)")
-                            st.plotly_chart(fig1, use_container_width=False)
-                        
-                        with metrics_cols[1]:
-                            fig2 = go.Figure(go.Indicator(
-                                mode="gauge+number",
-                                value=similarity_index,
-                                title={'text': "Similarity Index (%)"},
-                                number={'valueformat': '.2f', 'suffix': '%'},
-                                domain={'x': [0, 1], 'y': [0, 1]},
-                                gauge={
-                                    'axis': {'range': [0, 100], 'tickformat': '.0f'},
-                                    'bar': {'color': "orange"},
-                                    'steps': [
-                                        {'range': [0, 33], 'color': "#d4f0ff"},
-                                        {'range': [33, 66], 'color': "#ffeaa7"},
-                                        {'range': [66, 100], 'color': "#c8e6c9"}
-                                    ],
-                                    'threshold': {
-                                        'line': {'color': "red", 'width': 4},
-                                        'thickness': 0.75,
-                                        'value': 50
+                            merged = pd.DataFrame()
+                            merged['benchmark'] = b_filtered[y_axis].reset_index(drop=True)
+                            merged['target'] = v_filtered[y_axis].reset_index(drop=True)
+                            merged['benchmark_x'] = b_filtered[x_axis].reset_index(drop=True)
+                            merged['target_x'] = v_filtered[x_axis].reset_index(drop=True)
+                            merged['abs_diff'] = abs(merged['target'] - merged['benchmark'])
+                            merged['rel_diff'] = merged['abs_diff'] / (abs(merged['benchmark']) + 1e-10)
+                            
+                            rmse = np.sqrt(np.mean((merged['target'] - merged['benchmark']) ** 2))
+                            combined_range = max(merged['benchmark'].max(), merged['target'].max()) - min(merged['benchmark'].min(), merged['target'].min())
+                            similarity = 1 - (rmse / combined_range) if combined_range != 0 else (1.0 if rmse == 0 else 0.0)
+                            similarity_index = similarity * 100
+                            
+                            merged["Difference"] = merged['target'] - merged['benchmark']
+                            # Use detect_abnormalities helper for abnormal points
+                            abnormal_mask, z_scores = detect_abnormalities(merged["Difference"], threshold=z_threshold)
+                            merged["Z_Score"] = z_scores
+                            merged = merged.reset_index(drop=True)
+                            abnormal_points = merged[abnormal_mask]
+                            abnormal_count = int(abnormal_mask.sum())
+                            
+                            # Display metrics
+                            metrics_cols = st.columns(3)
+                            with metrics_cols[0]:
+                                fig1 = go.Figure(go.Indicator(
+                                    mode="gauge+number",
+                                    value=rmse,
+                                    title={'text': "RMSE"},
+                                    number={'valueformat': ',.2f'},
+                                    domain={'x': [0, 1], 'y': [0, 1]},
+                                    gauge={
+                                        'axis': {'range': [0, max(rmse * 2, 1)], 'tickformat': ',.2f'},
+                                        'bar': {'color': "darkblue"},
+                                        'steps': [
+                                            {'range': [0, rmse], 'color': "lightgray"},
+                                            {'range': [rmse, max(rmse * 2, 1)], 'color': "gray"}
+                                        ]
                                     }
-                                }
-                            ))
-                            fig2.update_layout(width=200, height=120, margin=dict(t=50, b=10), paper_bgcolor="rgba(0,0,0,0)")
-                            st.plotly_chart(fig2, use_container_width=False)
+                                ))
+                                fig1.update_layout(width=200, height=120, margin=dict(t=50, b=10), paper_bgcolor="rgba(0,0,0,0)")
+                                st.plotly_chart(fig1, use_container_width=False)
+                            
+                            with metrics_cols[1]:
+                                fig2 = go.Figure(go.Indicator(
+                                    mode="gauge+number",
+                                    value=similarity_index,
+                                    title={'text': "Similarity Index (%)"},
+                                    number={'valueformat': '.2f', 'suffix': '%'},
+                                    domain={'x': [0, 1], 'y': [0, 1]},
+                                    gauge={
+                                        'axis': {'range': [0, 100], 'tickformat': '.0f'},
+                                        'bar': {'color': "orange"},
+                                        'steps': [
+                                            {'range': [0, 33], 'color': "#d4f0ff"},
+                                            {'range': [33, 66], 'color': "#ffeaa7"},
+                                            {'range': [66, 100], 'color': "#c8e6c9"}
+                                        ],
+                                        'threshold': {
+                                            'line': {'color': "red", 'width': 4},
+                                            'thickness': 0.75,
+                                            'value': 50
+                                        }
+                                    }
+                                ))
+                                fig2.update_layout(width=200, height=120, margin=dict(t=50, b=10), paper_bgcolor="rgba(0,0,0,0)")
+                                st.plotly_chart(fig2, use_container_width=False)
+                            
+                            with metrics_cols[2]:
+                                fig3 = go.Figure(go.Indicator(
+                                    mode="gauge+number",
+                                    value=abnormal_count,
+                                    title={'text': "Abnormal Points"},
+                                    domain={'x': [0, 1], 'y': [0, 1]},
+                                    gauge={
+                                        'axis': {'range': [0, max(10, abnormal_count * 2)]},
+                                        'bar': {'color': "crimson"},
+                                        'steps': [
+                                            {'range': [0, 10], 'color': "#c8e6c9"},
+                                            {'range': [10, 25], 'color': "#ffcc80"},
+                                            {'range': [25, 100], 'color': "#ef5350"}
+                                        ]
+                                    }
+                                ))
+                                fig3.update_layout(width=200, height=120, margin=dict(t=50, b=10), paper_bgcolor="rgba(0,0,0,0)")
+                                st.plotly_chart(fig3, use_container_width=False)
                         
-                        with metrics_cols[2]:
-                            fig3 = go.Figure(go.Indicator(
-                                mode="gauge+number",
-                                value=abnormal_count,
-                                title={'text': "Abnormal Points"},
-                                domain={'x': [0, 1], 'y': [0, 1]},
-                                gauge={
-                                    'axis': {'range': [0, max(10, abnormal_count * 2)]},
-                                    'bar': {'color': "crimson"},
-                                    'steps': [
-                                        {'range': [0, 10], 'color': "#c8e6c9"},
-                                        {'range': [10, 25], 'color': "#ffcc80"},
-                                        {'range': [25, 100], 'color': "#ef5350"}
-                                    ]
-                                }
-                            ))
-                            fig3.update_layout(width=200, height=120, margin=dict(t=50, b=10), paper_bgcolor="rgba(0,0,0,0)")
-                            st.plotly_chart(fig3, use_container_width=False)
-                    
                         # Main plot area
-                        plot_mode = st.radio("Plot Mode", ["Superimposed", "Separate"], horizontal=True, key="comparative_plot_mode")
-                        
-                        fig = go.Figure()
                         if plot_mode == "Superimposed":
+                            fig = go.Figure()
                             fig.add_trace(go.Scatter(
                                 x=b_filtered[x_axis],
                                 y=b_filtered[y_axis],
