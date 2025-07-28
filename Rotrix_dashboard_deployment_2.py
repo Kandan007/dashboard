@@ -1958,9 +1958,13 @@ def main():
                         x_min_val = min(b_x_min, v_x_min)
                         x_max_val = max(b_x_max, v_x_max)
                         
-                        y_min_val = float(b_df[y_axis].min()) if y_axis in b_df.columns else 0.0
-                        y_max_val = float(b_df[y_axis].max()) if y_axis in b_df.columns else 1.0
-                        
+                        if y_axis in b_df.columns and y_axis in v_df.columns:
+                            y_min_val = float(min(b_df[y_axis].min(), v_df[y_axis].min()))
+                            y_max_val = float(max(b_df[y_axis].max(), v_df[y_axis].max()))
+                        else:
+                            y_min_val = 0.0
+                            y_max_val = 1.0
+
                         st.markdown(f"<span style='font-size:1.05rem; color:#444; font-weight:500;'>{'Time' if x_axis == 'timestamp_seconds' else x_axis}</span>", unsafe_allow_html=True)
                         x_min_col, x_max_col, x_reset_col = st.columns([6, 6, 2])
                         if x_axis == "timestamp_seconds":
