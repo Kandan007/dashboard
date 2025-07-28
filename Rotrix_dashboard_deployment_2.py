@@ -1082,7 +1082,22 @@ def main():
                     
                     # Z-Score threshold for anomaly detection
                     st.markdown("<span style='font-size:0.9rem; color:#444; font-weight:500;'>Z-Score Threshold</span>", unsafe_allow_html=True)
-                    z_threshold = st.slider("", 1.0, 5.0, 3.0, 0.1, help="Threshold for detecting abnormal data points", label_visibility="collapsed")
+                    z_threshold_col, z_reset_col = st.columns([8, 2])
+                    with z_threshold_col:
+                        # Check if reset was pressed
+                        if st.session_state.get("reset_z_pressed", False):
+                            z_threshold_default = 2.5
+                            st.session_state["reset_z_pressed"] = False
+                        else:
+                            z_threshold_default = st.session_state.get("z_threshold_grid", 2.5)
+                        z_threshold = st.slider("", 1.0, 5.0, z_threshold_default, 0.1, help="Threshold for detecting abnormal data points", label_visibility="collapsed", key="z_threshold_grid")
+                    with z_reset_col:
+                        st.markdown('<div style="margin-top: 28px;"></div>', unsafe_allow_html=True)
+                        if st.button("↺", key="reset_z_grid", help="Reset Z-Score threshold"):
+                            st.session_state["reset_z_pressed"] = True
+                            if "z_threshold_grid" in st.session_state:
+                                del st.session_state["z_threshold_grid"]
+                            st.rerun()
                     
                     # X-Axis limits
                     st.markdown(f"<span style='font-size:0.9rem; color:#444; font-weight:500;'>X-Axis Limits</span>", unsafe_allow_html=True)
@@ -1864,7 +1879,22 @@ def main():
                         )
                         y_axis = y_axis_options[y_axis_display_cmp.index(y_axis_selected_display_cmp)]
                         
-                        z_threshold = st.slider("Z-Score Threshold", 1.0, 5.0, 2.5, 0.01, key="z-slider-comparative")
+                        z_threshold_col, z_reset_col = st.columns([8, 2])
+                        with z_threshold_col:
+                            # Check if reset was pressed
+                            if st.session_state.get("reset_z_comparative_pressed", False):
+                                z_threshold_default = 2.5
+                                st.session_state["reset_z_comparative_pressed"] = False
+                            else:
+                                z_threshold_default = st.session_state.get("z_threshold_comparative", 2.5)
+                            z_threshold = st.slider("Z-Score Threshold", 1.0, 5.0, z_threshold_default, 0.01, key="z_threshold_comparative")
+                        with z_reset_col:
+                            st.markdown('<div style="margin-top: 28px;"></div>', unsafe_allow_html=True)
+                            if st.button("↺", key="reset_z_comparative", help="Reset Z-Score threshold"):
+                                st.session_state["reset_z_comparative_pressed"] = True
+                                if "z_threshold_comparative" in st.session_state:
+                                    del st.session_state["z_threshold_comparative"]
+                                st.rerun()
                         
                         # Axis range controls
                         x_min_val = float(b_df[x_axis].min()) if x_axis in b_df.columns else 0.0
