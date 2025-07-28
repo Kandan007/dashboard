@@ -2065,15 +2065,15 @@ def main():
                                 ), row=2, col=1
                             )
                     
-                    fig.update_layout(
-                        height=350,
-                        showlegend=True,
-                        legend=dict(orientation="h", yanchor="bottom", y=1.01, xanchor="center", x=0.5),
-                        margin=dict(t=15, b=10, l=50, r=20),
-                        plot_bgcolor='white',
-                        yaxis=dict(showticklabels=True, title=y_axis)
-                    )
-                    st.plotly_chart(fig, use_container_width=True)
+                        fig.update_layout(
+                            height=450,
+                            showlegend=True,
+                            legend=dict(orientation="h", yanchor="bottom", y=1.01, xanchor="center", x=0.5),
+                            margin=dict(t=15, b=10, l=50, r=20),
+                            plot_bgcolor='white',
+                            yaxis=dict(showticklabels=True, title=y_axis)
+                        )
+                        st.plotly_chart(fig, use_container_width=True)
                     
                     # Abnormal Points Table
                     if not abnormal_points.empty:
