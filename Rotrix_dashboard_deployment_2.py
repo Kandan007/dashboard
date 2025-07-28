@@ -1507,7 +1507,6 @@ def main():
                             st.dataframe(summary_stats, use_container_width=True)
 
         else:  # Comparative Analysis
-            # --- Comparative Analysis File Selection Row from Final.py ---
             col1, col_swap, col2, col_topic = st.columns([5, .4, 5, 3])
 
             with col1:
@@ -2067,7 +2066,7 @@ def main():
                             )
                     
                     fig.update_layout(
-                        height=450,
+                        height=350,
                         showlegend=True,
                         legend=dict(orientation="h", yanchor="bottom", y=1.01, xanchor="center", x=0.5),
                         margin=dict(t=15, b=10, l=50, r=20),
