@@ -1963,16 +1963,45 @@ def main():
                         
                         st.markdown(f"<span style='font-size:1.05rem; color:#444; font-weight:500;'>{'Time' if x_axis == 'timestamp_seconds' else x_axis}</span>", unsafe_allow_html=True)
                         x_min_col, x_max_col, x_reset_col = st.columns([6, 6, 2])
-                        with x_min_col:
-                            x_min = st.number_input("Start", value=x_min_val, format="%.2f", key="x_min_comparative", step=1.0)
-                        with x_max_col:
-                            x_max = st.number_input("End", value=x_max_val, format="%.2f", key="x_max_comparative", step=1.0)
-                        with x_reset_col:
-                            st.markdown('<div style="margin-top: 28px;"></div>', unsafe_allow_html=True)
-                            if st.button("↺", key="reset_x_comparative", help="Reset X-axis range"):
-                                st.session_state['x_min_comparative'] = x_min_val
-                                st.session_state['x_max_comparative'] = x_max_val
-                                st.rerun()
+                        if x_axis == "timestamp_seconds":
+                            # Use MM:SS text input for limits
+                            if st.session_state.get("reset_x_comparative_pressed", False):
+                                x_min_default = seconds_to_mmss(x_min_val)
+                                x_max_default = seconds_to_mmss(x_max_val)
+                                st.session_state["reset_x_comparative_pressed"] = False
+                            else:
+                                x_min_default = st.session_state.get("x_min_comparative_mmss", seconds_to_mmss(x_min_val))
+                                x_max_default = st.session_state.get("x_max_comparative_mmss", seconds_to_mmss(x_max_val))
+                            with x_min_col:
+                                st.markdown("<span style='font-size:0.8rem; color:#666;'>Start (MM:SS)</span>", unsafe_allow_html=True)
+                                x_min_mmss = st.text_input("", value=x_min_default, key="x_min_comparative_mmss", label_visibility="collapsed")
+                                x_min = mmss_to_seconds(x_min_mmss) if x_min_mmss else x_min_val
+                            with x_max_col:
+                                st.markdown("<span style='font-size:0.8rem; color:#666;'>End (MM:SS)</span>", unsafe_allow_html=True)
+                                x_max_mmss = st.text_input("", value=x_max_default, key="x_max_comparative_mmss", label_visibility="collapsed")
+                                x_max = mmss_to_seconds(x_max_mmss) if x_max_mmss else x_max_val
+                            with x_reset_col:
+                                st.markdown('<div style="margin-top: 28px;"></div>', unsafe_allow_html=True)
+                                if st.button("↺", key="reset_x_comparative", help="Reset X-axis range"):
+                                    st.session_state['reset_x_comparative_pressed'] = True
+                                    if "x_min_comparative_mmss" in st.session_state:
+                                        del st.session_state["x_min_comparative_mmss"]
+                                    if "x_max_comparative_mmss" in st.session_state:
+                                        del st.session_state["x_max_comparative_mmss"]
+                                    st.rerun()
+                        else:
+                            with x_min_col:
+                                st.markdown("<span style='font-size:0.8rem; color:#666;'>Start</span>", unsafe_allow_html=True)
+                                x_min = st.number_input("Start", value=x_min_val, format="%.2f", key="x_min_comparative", step=1.0, label_visibility="collapsed")
+                            with x_max_col:
+                                st.markdown("<span style='font-size:0.8rem; color:#666;'>End</span>", unsafe_allow_html=True)
+                                x_max = st.number_input("End", value=x_max_val, format="%.2f", key="x_max_comparative", step=1.0, label_visibility="collapsed")
+                            with x_reset_col:
+                                st.markdown('<div style="margin-top: 28px;"></div>', unsafe_allow_html=True)
+                                if st.button("↺", key="reset_x_comparative", help="Reset X-axis range"):
+                                    st.session_state['x_min_comparative'] = x_min_val
+                                    st.session_state['x_max_comparative'] = x_max_val
+                                    st.rerun()
                         
                         st.markdown(f"<span style='font-size:1.05rem; color:#444; font-weight:500;'>{y_axis}</span>", unsafe_allow_html=True)
                         y_min_col, y_max_col, y_reset_col = st.columns([6, 6, 2])
@@ -2162,8 +2191,7 @@ def main():
                             plot_bgcolor='white',
                             yaxis=dict(showticklabels=True, title=y_axis)
                         )
-                        
-                        # Update x-axis to show MM:SS if timestamp_seconds is used
+
                         if x_axis == "timestamp_seconds":
                             x_title = "Time (MM:SS)"
                             tick_vals, tick_texts = get_timestamp_ticks(b_filtered[x_axis])
