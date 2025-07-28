@@ -2074,6 +2074,20 @@ def main():
                             yaxis=dict(showticklabels=True, title=y_axis)
                         )
                         st.plotly_chart(fig, use_container_width=True)
+                        
+                        # Abnormal Points Table
+                        if not abnormal_points.empty:
+                            st.markdown("### ⚠️ Abnormal Points Data")
+                            table_cols = ['target_x', 'benchmark', 'target', 'Difference', 'Z_Score']
+                            table_cols = [col for col in table_cols if col in abnormal_points.columns]
+                            display_df = abnormal_points[table_cols].copy()
+                            if 'target_x' in display_df.columns:
+                                display_df = display_df.rename(columns={'target_x': x_axis})
+                            st.dataframe(
+                                display_df.round(4),
+                                use_container_width=True,
+                                height=250
+                            )
 
     # --- Footer ---
     st.markdown(
