@@ -1879,19 +1879,24 @@ def main():
                         except (ValueError, IndexError):
                             x_index = 0
                         
-                        # Define update callbacks for axis selection
+                        # Define update callbacks for axis selection (self-contained)
                         def update_x_axis():
-                            selected = st.session_state['x_axis_comparative_display']
-                            st.session_state['x_axis_comparative'] = x_axis_options[x_axis_display_cmp.index(selected)]
+                            selected = st.session_state.get('x_axis_comparative_display')
+                            if selected and selected in x_axis_display_cmp:
+                                st.session_state['x_axis_comparative'] = x_axis_options[x_axis_display_cmp.index(selected)]
+                            else:
+                                st.session_state['x_axis_comparative'] = x_axis_options[0]
                         def update_y_axis():
-                            selected = st.session_state['y_axis_comparative_display']
-                            st.session_state['y_axis_comparative'] = y_axis_options[y_axis_display_cmp.index(selected)]
+                            selected = st.session_state.get('y_axis_comparative_display')
+                            if selected and selected in y_axis_display_cmp:
+                                st.session_state['y_axis_comparative'] = y_axis_options[y_axis_display_cmp.index(selected)]
+                            else:
+                                st.session_state['y_axis_comparative'] = y_axis_options[0]
 
                         x_axis_selected_display_cmp = st.selectbox(
                             "X-Axis", x_axis_display_cmp, key="x_axis_comparative_display",
                             index=x_index, on_change=update_x_axis
                         )
-                        # Use the value from session state, fallback to first option
                         x_axis = st.session_state.get('x_axis_comparative', x_axis_options[0])
 
                         y_axis_selected_display_cmp = st.selectbox(
