@@ -1879,18 +1879,26 @@ def main():
                         except (ValueError, IndexError):
                             x_index = 0
                         
+                        # Define update callbacks for axis selection
+                        def update_x_axis():
+                            selected = st.session_state['x_axis_comparative_display']
+                            st.session_state['x_axis_comparative'] = x_axis_options[x_axis_display_cmp.index(selected)]
+                        def update_y_axis():
+                            selected = st.session_state['y_axis_comparative_display']
+                            st.session_state['y_axis_comparative'] = y_axis_options[y_axis_display_cmp.index(selected)]
+
                         x_axis_selected_display_cmp = st.selectbox(
                             "X-Axis", x_axis_display_cmp, key="x_axis_comparative_display",
-                            index=x_index
+                            index=x_index, on_change=update_x_axis
                         )
-                        
-                        # Safe conversion from display name to actual axis name
-                        try:
-                            x_axis = x_axis_options[x_axis_display_cmp.index(x_axis_selected_display_cmp)]
-                        except (ValueError, IndexError):
-                            x_axis = x_axis_options[0] if x_axis_options else None
-                        
-                        st.session_state['x_axis_comparative'] = x_axis
+                        # Use the value from session state, fallback to first option
+                        x_axis = st.session_state.get('x_axis_comparative', x_axis_options[0])
+
+                        y_axis_selected_display_cmp = st.selectbox(
+                            "Y-Axis", y_axis_display_cmp, key="y_axis_comparative_display",
+                            index=y_index, on_change=update_y_axis
+                        )
+                        y_axis = st.session_state.get('y_axis_comparative', y_axis_options[0])
                         
                         # Safe index calculation for Y-axis
                         try:
@@ -1898,19 +1906,6 @@ def main():
                             y_index = y_axis_display_cmp.index(current_y_display) if current_y_display in y_axis_display_cmp else 0
                         except (ValueError, IndexError):
                             y_index = 0
-                        
-                        y_axis_selected_display_cmp = st.selectbox(
-                            "Y-Axis", y_axis_display_cmp, key="y_axis_comparative_display",
-                            index=y_index
-                        )
-                        
-                        # Safe conversion from display name to actual axis name
-                        try:
-                            y_axis = y_axis_options[y_axis_display_cmp.index(y_axis_selected_display_cmp)]
-                        except (ValueError, IndexError):
-                            y_axis = y_axis_options[0] if y_axis_options else None
-                        
-                        st.session_state['y_axis_comparative'] = y_axis
                         
                         # Validate axis selections
                         if x_axis is None or y_axis is None:
