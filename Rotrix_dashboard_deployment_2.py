@@ -1981,7 +1981,7 @@ def main():
                                 x_max_mmss = st.text_input("", value=x_max_default, key="x_max_comparative_mmss", label_visibility="collapsed")
                                 x_max = mmss_to_seconds(x_max_mmss) if x_max_mmss else x_max_val
                             with x_reset_col:
-                                st.markdown('<div style="margin-top: 28px;"></div>', unsafe_allow_html=True)
+                                st.markdown('<div style="margin-top: 40;"></div>', unsafe_allow_html=True)
                                 if st.button("↺", key="reset_x_comparative", help="Reset X-axis range"):
                                     st.session_state['reset_x_comparative_pressed'] = True
                                     if "x_min_comparative_mmss" in st.session_state:
