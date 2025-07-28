@@ -1525,11 +1525,17 @@ def main():
                                     if col not in consolidated_df.columns:
                                         consolidated_df[col] = filtered_df[col]
                         
-                        st.dataframe(consolidated_df, use_container_width=True)
+                        # Filter out empty columns from the consolidated dataframe
+                        non_empty_cols = ['Index']  # Always keep Index
+                        for col in consolidated_df.columns:
+                            if col != 'Index' and not is_column_empty(consolidated_df, col):
+                                non_empty_cols.append(col)
+                        
+                        st.dataframe(consolidated_df[non_empty_cols], use_container_width=True)
                         
                         # Show summary statistics for all columns
                         st.markdown("### 📊 Summary Statistics")
-                        numeric_cols = [col for col in consolidated_df.columns if col != 'Index' and pd.api.types.is_numeric_dtype(consolidated_df[col])]
+                        numeric_cols = [col for col in consolidated_df.columns if col != 'Index' and pd.api.types.is_numeric_dtype(consolidated_df[col]) and not is_column_empty(consolidated_df, col)]
                         if numeric_cols:
                             summary_stats = consolidated_df[numeric_cols].describe()
                             st.dataframe(summary_stats, use_container_width=True)
@@ -1762,10 +1768,14 @@ def main():
                             if b_file_ext == ".ulg" and selected_assessment and selected_assessment != "None":
                                 if selected_assessment in ASSESSMENT_Y_AXIS_MAP:
                                     assessment_cols = ASSESSMENT_Y_AXIS_MAP[selected_assessment]
-                                    display_cols.extend([col for col in assessment_cols if col in b_df.columns])
+                                    # Filter out empty columns
+                                    non_empty_assessment_cols = [col for col in assessment_cols if col in b_df.columns and not is_column_empty(b_df, col)]
+                                    display_cols.extend(non_empty_assessment_cols)
                             else:
                                 numeric_cols = [col for col in b_df.columns if pd.api.types.is_numeric_dtype(b_df[col]) and col not in display_cols]
-                                display_cols.extend(numeric_cols)
+                                # Filter out empty columns
+                                non_empty_numeric_cols = [col for col in numeric_cols if not is_column_empty(b_df, col)]
+                                display_cols.extend(non_empty_numeric_cols)
                             st.dataframe(
                                 b_df[list(dict.fromkeys(display_cols))].rename(columns=COLUMN_DISPLAY_NAMES),
                                 use_container_width=True,
@@ -1786,10 +1796,14 @@ def main():
                             if v_file_ext == ".ulg" and selected_assessment and selected_assessment != "None":
                                 if selected_assessment in ASSESSMENT_Y_AXIS_MAP:
                                     assessment_cols = ASSESSMENT_Y_AXIS_MAP[selected_assessment]
-                                    display_cols.extend([col for col in assessment_cols if col in v_df.columns])
+                                    # Filter out empty columns
+                                    non_empty_assessment_cols = [col for col in assessment_cols if col in v_df.columns and not is_column_empty(v_df, col)]
+                                    display_cols.extend(non_empty_assessment_cols)
                             else:
                                 numeric_cols = [col for col in v_df.columns if pd.api.types.is_numeric_dtype(v_df[col]) and col not in display_cols]
-                                display_cols.extend(numeric_cols)
+                                # Filter out empty columns
+                                non_empty_numeric_cols = [col for col in numeric_cols if not is_column_empty(v_df, col)]
+                                display_cols.extend(non_empty_numeric_cols)
                             st.dataframe(
                                 v_df[list(dict.fromkeys(display_cols))].rename(columns=COLUMN_DISPLAY_NAMES),
                                 use_container_width=True,
