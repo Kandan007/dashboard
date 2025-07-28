@@ -1804,18 +1804,25 @@ def main():
                     st.session_state.b_df = b_df
                     st.session_state.v_df = v_df
                     
-                    # Get axis options
-                    x_axis_options = []
-                    y_axis_options = []
-                    if 'timestamp_seconds' in b_df.columns:
-                        x_axis_options.append('timestamp_seconds')
-                    if 'Index' in b_df.columns:
-                        x_axis_options.append('Index')
-                    
-                    numeric_cols = get_numeric_columns(b_df)
-                    exclude_cols = {"timestamp", "timestamp_sample"}
-                    x_axis_options += [col for col in numeric_cols if col not in x_axis_options and col not in exclude_cols]
-                    y_axis_options += [col for col in numeric_cols if col not in y_axis_options and col not in exclude_cols]
+                    # --- Restrict axis selection as in Final.py ---
+                    if b_file_ext == ".ulg" and selected_assessment and selected_assessment != "None":
+                        allowed_y_axis = ASSESSMENT_Y_AXIS_MAP.get(selected_assessment, [])
+                        # Only keep columns present in both dataframes
+                        allowed_y_axis = [col for col in allowed_y_axis if col in b_df.columns and col in v_df.columns]
+                        if not allowed_y_axis:
+                            # fallback: all numeric columns present in both
+                            allowed_y_axis = [col for col in b_df.columns if pd.api.types.is_numeric_dtype(b_df[col]) and col in v_df.columns]
+                        allowed_x_axis = [col for col in allowed_y_axis if col not in ["Index", "timestamp_seconds"]]
+                        x_axis_options = ["Index", "timestamp_seconds"] + allowed_x_axis
+                        y_axis_options = allowed_y_axis
+                    else:
+                        # CSV or no assessment: all numeric columns present in both
+                        b_numeric = get_numeric_columns(b_df)
+                        v_numeric = get_numeric_columns(v_df)
+                        common_cols = [col for col in b_numeric if col in v_numeric]
+                        y_axis_options = common_cols
+                        allowed_x_axis = [col for col in y_axis_options if col not in ["Index", "timestamp_seconds"]]
+                        x_axis_options = ["Index", "timestamp_seconds"] + allowed_x_axis
                     
                     # Fallbacks
                     if not x_axis_options:
@@ -1830,26 +1837,21 @@ def main():
                         y_axis_options = ['Index']
                         st.session_state.b_df = b_df
                         st.session_state.v_df = v_df
-                    # Always add 'Index' for CSV files
-                    if b_file_ext == '.csv' and 'Index' not in x_axis_options:
-                        b_df['Index'] = b_df.index
-                        v_df['Index'] = v_df.index
-                        x_axis_options = ['Index'] + [col for col in x_axis_options if col != 'Index']
-                        st.session_state.b_df = b_df
-                        st.session_state.v_df = v_df
+                    
                     # Default axis selection
                     if b_file_ext == ".ulg":
                         default_x = "timestamp_seconds" if "timestamp_seconds" in x_axis_options else ("Index" if "Index" in x_axis_options else x_axis_options[0])
                     else:
                         default_x = "Index" if "Index" in x_axis_options else ("timestamp_seconds" if "timestamp_seconds" in x_axis_options else x_axis_options[0])
-                    preferred_y_columns = ['Thrust (kgf)', 'cD2detailpeak', 'Thrust']
+                    
                     if b_file_ext == ".csv":
-                        default_y = next((col for col in preferred_y_columns if col in y_axis_options), y_axis_options[0] if y_axis_options else None)
+                        default_y = y_axis_options[0] if y_axis_options else None
                     elif b_file_ext == ".ulg" and selected_assessment in ASSESSMENT_Y_AXIS_MAP:
                         allowed_y_axis = [col for col in ASSESSMENT_Y_AXIS_MAP[selected_assessment] if col in y_axis_options]
                         default_y = allowed_y_axis[0] if allowed_y_axis else (y_axis_options[0] if y_axis_options else None)
                     else:
                         default_y = y_axis_options[0] if y_axis_options else None
+                    
                     if 'x_axis_comparative' not in st.session_state or st.session_state.x_axis_comparative not in x_axis_options:
                         st.session_state.x_axis_comparative = default_x
                     if 'y_axis_comparative' not in st.session_state or st.session_state.y_axis_comparative not in y_axis_options:
