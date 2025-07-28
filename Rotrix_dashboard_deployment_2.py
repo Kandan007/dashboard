@@ -344,29 +344,41 @@ def resample_to_common_time(df1, df2, freq=1.0):
         return df1.copy(), df2.copy(), []
 
     try:
-        df1_c = df1.copy().set_index('timestamp_seconds').sort_index()
-        df2_c = df2.copy().set_index('timestamp_seconds').sort_index()
+        # Use copy only if necessary to save memory
+        df1_c = df1.set_index('timestamp_seconds').sort_index()
+        df2_c = df2.set_index('timestamp_seconds').sort_index()
 
         if df1_c.empty and df2_c.empty:
             return df1.copy(), df2.copy(), []
         
-        start = min(df1_c.index.min() if not df1_c.empty else np.inf, 
-                    df2_c.index.min() if not df2_c.empty else np.inf)
-        end = max(df1_c.index.max() if not df1_c.empty else -np.inf, 
-                  df2_c.index.max() if not df2_c.empty else -np.inf)
+        # Get the time ranges more efficiently
+        start1 = df1_c.index.min() if not df1_c.empty else np.inf
+        end1 = df1_c.index.max() if not df1_c.empty else -np.inf
+        start2 = df2_c.index.min() if not df2_c.empty else np.inf
+        end2 = df2_c.index.max() if not df2_c.empty else -np.inf
+        
+        # Find the common time range
+        start = min(start1, start2)
+        end = max(end1, end2)
 
         if start >= end or start == np.inf or end == -np.inf:
             return df1, df2, []
-            
-        common_time_index = pd.Index(np.arange(start, end, freq), name='timestamp_seconds')
+        
+        # Create a common time index with regular intervals
+        common_time_index = pd.Index(np.arange(start, end + freq, freq), name='timestamp_seconds')
         
         if len(common_time_index) == 0:
             return df1, df2, []
 
+        # Optimize resampling by using more efficient methods
         df1_resampled = df1_c.reindex(df1_c.index.union(common_time_index)).interpolate(method='index').reindex(common_time_index)
         df2_resampled = df2_c.reindex(df2_c.index.union(common_time_index)).interpolate(method='index').reindex(common_time_index)
         
-        return df1_resampled.reset_index(), df2_resampled.reset_index(), common_time_index.to_numpy()
+        # Reset index to get timestamp_seconds as a column
+        df1_resampled = df1_resampled.reset_index()
+        df2_resampled = df2_resampled.reset_index()
+        
+        return df1_resampled, df2_resampled, common_time_index.to_numpy()
 
     except Exception as e:
         st.error(f"Error during resampling: {str(e)}")
@@ -1898,8 +1910,19 @@ def main():
                         </div>
                         """, unsafe_allow_html=True)
                         
-                        x_axis_display_cmp = [get_display_name(col) for col in x_axis_options]
-                        y_axis_display_cmp = [get_display_name(col) for col in y_axis_options]
+                        # Cache display names to avoid recalculation
+                        display_cache_key = f"display_names_{x_axis_options}_{y_axis_options}"
+                        if display_cache_key not in st.session_state:
+                            x_axis_display_cmp = [get_display_name(col) for col in x_axis_options]
+                            y_axis_display_cmp = [get_display_name(col) for col in y_axis_options]
+                            st.session_state[display_cache_key] = {
+                                'x_axis_display': x_axis_display_cmp,
+                                'y_axis_display': y_axis_display_cmp
+                            }
+                        else:
+                            cached_displays = st.session_state[display_cache_key]
+                            x_axis_display_cmp = cached_displays['x_axis_display']
+                            y_axis_display_cmp = cached_displays['y_axis_display']
                         
                         # Ensure we have valid options
                         if not x_axis_options or not y_axis_options:
@@ -1948,6 +1971,17 @@ def main():
                             y_axis = y_axis_options[0] if y_axis_options else None
                         
                         st.session_state['y_axis_comparative'] = y_axis
+                        
+                        # Clear cache when parameters change to ensure fresh calculations
+                        current_params = f"{x_axis}_{y_axis}_{z_threshold}"
+                        if 'previous_comparative_params' not in st.session_state:
+                            st.session_state['previous_comparative_params'] = current_params
+                        elif st.session_state['previous_comparative_params'] != current_params:
+                            # Clear all comparative analysis cache when parameters change
+                            keys_to_clear = [key for key in st.session_state.keys() if key.startswith('comparative_analysis_') or key.startswith('plot_data_')]
+                            for key in keys_to_clear:
+                                del st.session_state[key]
+                            st.session_state['previous_comparative_params'] = current_params
                         
                         # Validate axis selections
                         if x_axis is None or y_axis is None:
@@ -2064,35 +2098,60 @@ def main():
                                 st.rerun()
                     
                     with metrics_col:
-                        # Calculate metrics
-                        b_filtered = b_df[(b_df[x_axis] >= x_min) & (b_df[x_axis] <= x_max) & (b_df[y_axis] >= y_min) & (b_df[y_axis] <= y_max)]
-                        v_filtered = v_df[(v_df[x_axis] >= x_min) & (v_df[x_axis] <= x_max) & (v_df[y_axis] >= y_min) & (v_df[y_axis] <= y_max)]
+                        # Calculate metrics with caching for performance
+                        cache_key = f"comparative_analysis_{x_axis}_{y_axis}_{x_min}_{x_max}_{y_min}_{y_max}_{z_threshold}"
                         
-                        if x_axis == 'timestamp_seconds':
-                            b_filtered, v_filtered, _ = resample_to_common_time(b_filtered, v_filtered)
+                        if cache_key not in st.session_state:
+                            # Calculate metrics only when parameters change
+                            b_filtered = b_df[(b_df[x_axis] >= x_min) & (b_df[x_axis] <= x_max) & (b_df[y_axis] >= y_min) & (b_df[y_axis] <= y_max)]
+                            v_filtered = v_df[(v_df[x_axis] >= x_min) & (v_df[x_axis] <= x_max) & (v_df[y_axis] >= y_min) & (v_df[y_axis] <= y_max)]
+                            
+                            if x_axis == 'timestamp_seconds':
+                                b_filtered, v_filtered, _ = resample_to_common_time(b_filtered, v_filtered)
 
-                        merged = pd.DataFrame()
-                        merged['benchmark'] = b_filtered[y_axis].reset_index(drop=True)
-                        merged['target'] = v_filtered[y_axis].reset_index(drop=True)
-                        merged['benchmark_x'] = b_filtered[x_axis].reset_index(drop=True)
-                        merged['target_x'] = v_filtered[x_axis].reset_index(drop=True)
-                        merged['abs_diff'] = abs(merged['target'] - merged['benchmark'])
-                        merged['rel_diff'] = merged['abs_diff'] / (abs(merged['benchmark']) + 1e-10)
+                            merged = pd.DataFrame()
+                            merged['benchmark'] = b_filtered[y_axis].reset_index(drop=True)
+                            merged['target'] = v_filtered[y_axis].reset_index(drop=True)
+                            merged['benchmark_x'] = b_filtered[x_axis].reset_index(drop=True)
+                            merged['target_x'] = v_filtered[x_axis].reset_index(drop=True)
+                            merged['abs_diff'] = abs(merged['target'] - merged['benchmark'])
+                            merged['rel_diff'] = merged['abs_diff'] / (abs(merged['benchmark']) + 1e-10)
+                            
+                            rmse = np.sqrt(np.mean((merged['target'] - merged['benchmark']) ** 2))
+                            combined_range = max(merged['benchmark'].max(), merged['target'].max()) - min(merged['benchmark'].min(), merged['target'].min())
+                            similarity = 1 - (rmse / combined_range) if combined_range != 0 else (1.0 if rmse == 0 else 0.0)
+                            similarity_index = similarity * 100
+                            
+                            merged["Difference"] = merged['target'] - merged['benchmark']
+                            # Use detect_abnormalities helper for abnormal points
+                            abnormal_mask, z_scores = detect_abnormalities(merged["Difference"], threshold=z_threshold)
+                            merged["Z_Score"] = z_scores
+                            merged = merged.reset_index(drop=True)
+                            abnormal_points = merged[abnormal_mask]
+                            abnormal_count = int(abnormal_mask.sum())
+                            
+                            # Cache the results
+                            st.session_state[cache_key] = {
+                                'merged': merged,
+                                'abnormal_points': abnormal_points,
+                                'rmse': rmse,
+                                'similarity_index': similarity_index,
+                                'abnormal_count': abnormal_count,
+                                'b_filtered': b_filtered,
+                                'v_filtered': v_filtered
+                            }
+                        else:
+                            # Use cached results
+                            cached_data = st.session_state[cache_key]
+                            merged = cached_data['merged']
+                            abnormal_points = cached_data['abnormal_points']
+                            rmse = cached_data['rmse']
+                            similarity_index = cached_data['similarity_index']
+                            abnormal_count = cached_data['abnormal_count']
+                            b_filtered = cached_data['b_filtered']
+                            v_filtered = cached_data['v_filtered']
                         
-                        rmse = np.sqrt(np.mean((merged['target'] - merged['benchmark']) ** 2))
-                        combined_range = max(merged['benchmark'].max(), merged['target'].max()) - min(merged['benchmark'].min(), merged['target'].min())
-                        similarity = 1 - (rmse / combined_range) if combined_range != 0 else (1.0 if rmse == 0 else 0.0)
-                        similarity_index = similarity * 100
-                        
-                        merged["Difference"] = merged['target'] - merged['benchmark']
-                        # Use detect_abnormalities helper for abnormal points
-                        abnormal_mask, z_scores = detect_abnormalities(merged["Difference"], threshold=z_threshold)
-                        merged["Z_Score"] = z_scores
-                        merged = merged.reset_index(drop=True)
-                        abnormal_points = merged[abnormal_mask]
-                        abnormal_count = int(abnormal_mask.sum())
-                        
-                        # Display metrics
+                        # Display metrics with optimized chart creation
                         metrics_cols = st.columns(3)
                         with metrics_cols[0]:
                             fig1 = go.Figure(go.Indicator(
@@ -2111,7 +2170,7 @@ def main():
                                 }
                             ))
                             fig1.update_layout(width=200, height=120, margin=dict(t=50, b=10), paper_bgcolor="rgba(0,0,0,0)")
-                            st.plotly_chart(fig1, use_container_width=False)
+                            st.plotly_chart(fig1, use_container_width=False, config={'displayModeBar': False})
                         
                         with metrics_cols[1]:
                             fig2 = go.Figure(go.Indicator(
@@ -2136,7 +2195,7 @@ def main():
                                 }
                             ))
                             fig2.update_layout(width=200, height=120, margin=dict(t=50, b=10), paper_bgcolor="rgba(0,0,0,0)")
-                            st.plotly_chart(fig2, use_container_width=False)
+                            st.plotly_chart(fig2, use_container_width=False, config={'displayModeBar': False})
                         
                         with metrics_cols[2]:
                             fig3 = go.Figure(go.Indicator(
@@ -2155,9 +2214,9 @@ def main():
                                 }
                             ))
                             fig3.update_layout(width=200, height=120, margin=dict(t=50, b=10), paper_bgcolor="rgba(0,0,0,0)")
-                            st.plotly_chart(fig3, use_container_width=False)
+                            st.plotly_chart(fig3, use_container_width=False, config={'displayModeBar': False})
                     
-                        # Main plot area
+                        # Main plot area with caching
                         # --- Plot Visualization heading and Plot Mode selector in one row ---
                         heading_col, mode_col = st.columns([0.7, 0.3])
                         with heading_col:
@@ -2174,9 +2233,12 @@ def main():
                             if plot_mode != st.session_state['previous_plot_mode']:
                                 st.session_state['previous_plot_mode'] = plot_mode
                                 st.rerun()
-                        plot_container = st.container()
-                        with plot_container:
-                            # (put the plot code here, using plot_mode as before)
+                        
+                        # Cache plot data to avoid recalculation
+                        plot_cache_key = f"plot_data_{x_axis}_{y_axis}_{plot_mode}_{x_min}_{x_max}_{y_min}_{y_max}"
+                        
+                        if plot_cache_key not in st.session_state:
+                            # Create plot data
                             if plot_mode == "Superimposed":
                                 fig = go.Figure()
                                 fig.add_trace(go.Scatter(
@@ -2247,6 +2309,7 @@ def main():
                                         ), row=2, col=1
                                     )
                             
+                            # Apply layout optimizations
                             fig.update_layout(
                                 height=450,
                                 showlegend=True,
@@ -2284,21 +2347,33 @@ def main():
                             else:
                                 fig.update_xaxes(title_text=x_axis)
                             
-                            st.plotly_chart(fig, use_container_width=True)
-                            
-                            # Abnormal Points Table
-                            if not abnormal_points.empty:
-                                st.markdown("### ⚠️ Abnormal Points Data")
-                                table_cols = ['target_x', 'benchmark', 'target', 'Difference', 'Z_Score']
-                                table_cols = [col for col in table_cols if col in abnormal_points.columns]
-                                display_df = abnormal_points[table_cols].copy()
-                                if 'target_x' in display_df.columns:
-                                    display_df = display_df.rename(columns={'target_x': x_axis})
-                                st.dataframe(
-                                    display_df.round(4),
-                                    use_container_width=True,
-                                    height=250
-                                )
+                            # Cache the figure
+                            st.session_state[plot_cache_key] = fig
+                        else:
+                            # Use cached figure
+                            fig = st.session_state[plot_cache_key]
+                        
+                        # Display the plot with optimized rendering
+                        st.plotly_chart(fig, use_container_width=True, config={
+                            'displayModeBar': True,
+                            'modeBarButtonsToRemove': ['pan2d', 'lasso2d', 'select2d'],
+                            'displaylogo': False,
+                            'responsive': True
+                        })
+                        
+                        # Abnormal Points Table with optimization
+                        if not abnormal_points.empty:
+                            st.markdown("### ⚠️ Abnormal Points Data")
+                            table_cols = ['target_x', 'benchmark', 'target', 'Difference', 'Z_Score']
+                            table_cols = [col for col in table_cols if col in abnormal_points.columns]
+                            display_df = abnormal_points[table_cols].copy()
+                            if 'target_x' in display_df.columns:
+                                display_df = display_df.rename(columns={'target_x': x_axis})
+                            st.dataframe(
+                                display_df.round(4),
+                                use_container_width=True,
+                                height=250
+                            )
 
     # --- Footer ---
     st.markdown(
