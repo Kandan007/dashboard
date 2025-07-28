@@ -1843,9 +1843,9 @@ def main():
                         default_x = "timestamp_seconds" if "timestamp_seconds" in x_axis_options else ("Index" if "Index" in x_axis_options else x_axis_options[0])
                     else:
                         default_x = "Index" if "Index" in x_axis_options else ("timestamp_seconds" if "timestamp_seconds" in x_axis_options else x_axis_options[0])
-                    
+                    preferred_y_columns = ['Thrust (kgf)', 'cD2detailpeak', 'Thrust']
                     if b_file_ext == ".csv":
-                        default_y = y_axis_options[0] if y_axis_options else None
+                        default_y = next((col for col in preferred_y_columns if col in y_axis_options), y_axis_options[0] if y_axis_options else None)
                     elif b_file_ext == ".ulg" and selected_assessment in ASSESSMENT_Y_AXIS_MAP:
                         allowed_y_axis = [col for col in ASSESSMENT_Y_AXIS_MAP[selected_assessment] if col in y_axis_options]
                         default_y = allowed_y_axis[0] if allowed_y_axis else (y_axis_options[0] if y_axis_options else None)
