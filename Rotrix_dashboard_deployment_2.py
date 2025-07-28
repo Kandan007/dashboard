@@ -1897,8 +1897,16 @@ def main():
                                 st.rerun()
                         
                         # Axis range controls
-                        x_min_val = float(b_df[x_axis].min()) if x_axis in b_df.columns else 0.0
-                        x_max_val = float(b_df[x_axis].max()) if x_axis in b_df.columns else 1.0
+                        # Calculate x-axis limits from both benchmark and validation datasets
+                        b_x_min = float(b_df[x_axis].min()) if x_axis in b_df.columns else 0.0
+                        b_x_max = float(b_df[x_axis].max()) if x_axis in b_df.columns else 1.0
+                        v_x_min = float(v_df[x_axis].min()) if x_axis in v_df.columns else 0.0
+                        v_x_max = float(v_df[x_axis].max()) if x_axis in v_df.columns else 1.0
+                        
+                        # Use the overall min and max from both datasets
+                        x_min_val = min(b_x_min, v_x_min)
+                        x_max_val = max(b_x_max, v_x_max)
+                        
                         y_min_val = float(b_df[y_axis].min()) if y_axis in b_df.columns else 0.0
                         y_max_val = float(b_df[y_axis].max()) if y_axis in b_df.columns else 1.0
                         
