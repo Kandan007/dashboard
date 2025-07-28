@@ -1115,7 +1115,7 @@ def main():
                         x_max = st.number_input("", value=x_max_default, format="%.2f", key="x_max_grid", step=1.0, label_visibility="collapsed")
                         x_max_seconds = float(x_max)
                 with x_reset_col:
-                    st.markdown('<div style="margin-top: 30px;"></div>', unsafe_allow_html=True)
+                    st.markdown('<div style="margin-top: 40px;"></div>', unsafe_allow_html=True)
                     if st.button("↺", key="reset_x_grid", help="Reset X-axis range"):
                         # Set flag to reset values
                         st.session_state["reset_x_pressed"] = True
