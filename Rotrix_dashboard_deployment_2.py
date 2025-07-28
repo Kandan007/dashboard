@@ -2074,32 +2074,6 @@ def main():
                             yaxis=dict(showticklabels=True, title=y_axis)
                         )
                         st.plotly_chart(fig, use_container_width=True)
-                        
-                        # Abnormal Points Table
-                        if not abnormal_points.empty:
-                            st.markdown("### ⚠️ Abnormal Points Data")
-                            table_cols = []
-                            if 'Index' in abnormal_points.columns:
-                                table_cols.append('Index')
-                            if 'timestamp_seconds' in abnormal_points.columns:
-                                table_cols.append('timestamp_seconds')
-                            if x_axis not in table_cols:
-                                table_cols.append(x_axis)
-                            if y_axis not in table_cols:
-                                table_cols.append(y_axis)
-                            
-                            # Add Z-Score if available
-                            if 'Z_Score' in abnormal_points.columns:
-                                table_cols.append('Z_Score')
-                            
-                            # Limit to first 8 columns for readability
-                            table_cols = table_cols[:8]
-                            
-                            st.dataframe(
-                                abnormal_points[table_cols].round(4),
-                                use_container_width=True,
-                                height=200
-                            )
 
     # --- Footer ---
     st.markdown(
