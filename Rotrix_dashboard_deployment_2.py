@@ -2078,15 +2078,27 @@ def main():
                         # Abnormal Points Table
                         if not abnormal_points.empty:
                             st.markdown("### ⚠️ Abnormal Points Data")
-                            table_cols = ['target_x', 'benchmark', 'target', 'Difference', 'Z_Score']
-                            table_cols = [col for col in table_cols if col in abnormal_points.columns]
-                            display_df = abnormal_points[table_cols].copy()
-                            if 'target_x' in display_df.columns:
-                                display_df = display_df.rename(columns={'target_x': x_axis})
+                            table_cols = []
+                            if 'Index' in abnormal_points.columns:
+                                table_cols.append('Index')
+                            if 'timestamp_seconds' in abnormal_points.columns:
+                                table_cols.append('timestamp_seconds')
+                            if x_axis not in table_cols:
+                                table_cols.append(x_axis)
+                            if y_axis not in table_cols:
+                                table_cols.append(y_axis)
+                            
+                            # Add Z-Score if available
+                            if 'Z_Score' in abnormal_points.columns:
+                                table_cols.append('Z_Score')
+                            
+                            # Limit to first 8 columns for readability
+                            table_cols = table_cols[:8]
+                            
                             st.dataframe(
-                                display_df.round(4),
+                                abnormal_points[table_cols].round(4),
                                 use_container_width=True,
-                                height=250
+                                height=200
                             )
 
     # --- Footer ---
