@@ -350,34 +350,23 @@ def resample_to_common_time(df1, df2, freq=1.0):
         if df1_c.empty and df2_c.empty:
             return df1.copy(), df2.copy(), []
         
-        # Get the time ranges
-        start1 = df1_c.index.min() if not df1_c.empty else np.inf
-        end1 = df1_c.index.max() if not df1_c.empty else -np.inf
-        start2 = df2_c.index.min() if not df2_c.empty else np.inf
-        end2 = df2_c.index.max() if not df2_c.empty else -np.inf
-        
-        # Find the common time range
-        start = min(start1, start2)
-        end = max(end1, end2)
+        start = min(df1_c.index.min() if not df1_c.empty else np.inf, 
+                    df2_c.index.min() if not df2_c.empty else np.inf)
+        end = max(df1_c.index.max() if not df1_c.empty else -np.inf, 
+                  df2_c.index.max() if not df2_c.empty else -np.inf)
 
         if start >= end or start == np.inf or end == -np.inf:
             return df1, df2, []
-        
-        # Create a common time index with regular intervals
-        common_time_index = pd.Index(np.arange(start, end + freq, freq), name='timestamp_seconds')
+            
+        common_time_index = pd.Index(np.arange(start, end, freq), name='timestamp_seconds')
         
         if len(common_time_index) == 0:
             return df1, df2, []
 
-        # Resample both dataframes to the common time index
         df1_resampled = df1_c.reindex(df1_c.index.union(common_time_index)).interpolate(method='index').reindex(common_time_index)
         df2_resampled = df2_c.reindex(df2_c.index.union(common_time_index)).interpolate(method='index').reindex(common_time_index)
         
-        # Reset index to get timestamp_seconds as a column
-        df1_resampled = df1_resampled.reset_index()
-        df2_resampled = df2_resampled.reset_index()
-        
-        return df1_resampled, df2_resampled, common_time_index.to_numpy()
+        return df1_resampled.reset_index(), df2_resampled.reset_index(), common_time_index.to_numpy()
 
     except Exception as e:
         st.error(f"Error during resampling: {str(e)}")
@@ -2076,14 +2065,11 @@ def main():
                     
                     with metrics_col:
                         # Calculate metrics
-                        # For timestamp_seconds, resample before filtering to ensure proper alignment
+                        b_filtered = b_df[(b_df[x_axis] >= x_min) & (b_df[x_axis] <= x_max) & (b_df[y_axis] >= y_min) & (b_df[y_axis] <= y_max)]
+                        v_filtered = v_df[(v_df[x_axis] >= x_min) & (v_df[x_axis] <= x_max) & (v_df[y_axis] >= y_min) & (v_df[y_axis] <= y_max)]
+                        
                         if x_axis == 'timestamp_seconds':
-                            b_resampled, v_resampled, _ = resample_to_common_time(b_df, v_df)
-                            b_filtered = b_resampled[(b_resampled[x_axis] >= x_min) & (b_resampled[x_axis] <= x_max) & (b_resampled[y_axis] >= y_min) & (b_resampled[y_axis] <= y_max)]
-                            v_filtered = v_resampled[(v_resampled[x_axis] >= x_min) & (v_resampled[x_axis] <= x_max) & (v_resampled[y_axis] >= y_min) & (v_resampled[y_axis] <= y_max)]
-                        else:
-                            b_filtered = b_df[(b_df[x_axis] >= x_min) & (b_df[x_axis] <= x_max) & (b_df[y_axis] >= y_min) & (b_df[y_axis] <= y_max)]
-                            v_filtered = v_df[(v_df[x_axis] >= x_min) & (v_df[x_axis] <= x_max) & (v_df[y_axis] >= y_min) & (v_df[y_axis] <= y_max)]
+                            b_filtered, v_filtered, _ = resample_to_common_time(b_filtered, v_filtered)
 
                         merged = pd.DataFrame()
                         merged['benchmark'] = b_filtered[y_axis].reset_index(drop=True)
