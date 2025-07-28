@@ -1092,7 +1092,7 @@ def main():
                             z_threshold_default = st.session_state.get("z_threshold_grid", 2.5)
                         z_threshold = st.slider("", 1.0, 5.0, z_threshold_default, 0.1, help="Threshold for detecting abnormal data points", label_visibility="collapsed", key="z_threshold_grid")
                     with z_reset_col:
-                        st.markdown('<div style="margin-top: 2px;"></div>', unsafe_allow_html=True)
+                        st.markdown('<div style="margin-top: 0px;"></div>', unsafe_allow_html=True)
                         if st.button("↺", key="reset_z_grid", help="Reset Z-Score threshold"):
                             st.session_state["reset_z_pressed"] = True
                             if "z_threshold_grid" in st.session_state:
