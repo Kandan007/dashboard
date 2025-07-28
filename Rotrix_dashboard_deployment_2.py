@@ -2001,7 +2001,7 @@ def main():
                                 st.markdown("<span style='font-size:0.8rem; color:#666;'>End</span>", unsafe_allow_html=True)
                                 x_max = st.number_input("End", value=x_max_val, format="%.2f", key="x_max_comparative", step=1.0, label_visibility="collapsed")
                             with x_reset_col:
-                                st.markdown('<div style="margin-top: 28px;"></div>', unsafe_allow_html=True)
+                                st.markdown('<div style="margin-top: 40px;"></div>', unsafe_allow_html=True)
                                 if st.button("↺", key="reset_x_comparative", help="Reset X-axis range"):
                                     st.session_state['x_min_comparative'] = x_min_val
                                     st.session_state['x_max_comparative'] = x_max_val
