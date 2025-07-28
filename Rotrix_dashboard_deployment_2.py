@@ -1829,13 +1829,18 @@ def main():
                         y_axis_options = ['Index']
                         st.session_state.b_df = b_df
                         st.session_state.v_df = v_df
-                    
+                    # Always add 'Index' for CSV files
+                    if b_file_ext == '.csv' and 'Index' not in x_axis_options:
+                        b_df['Index'] = b_df.index
+                        v_df['Index'] = v_df.index
+                        x_axis_options = ['Index'] + [col for col in x_axis_options if col != 'Index']
+                        st.session_state.b_df = b_df
+                        st.session_state.v_df = v_df
                     # Default axis selection
                     if b_file_ext == ".ulg":
                         default_x = "timestamp_seconds" if "timestamp_seconds" in x_axis_options else ("Index" if "Index" in x_axis_options else x_axis_options[0])
                     else:
                         default_x = "Index" if "Index" in x_axis_options else ("timestamp_seconds" if "timestamp_seconds" in x_axis_options else x_axis_options[0])
-                    
                     preferred_y_columns = ['Thrust (kgf)', 'cD2detailpeak', 'Thrust']
                     if b_file_ext == ".csv":
                         default_y = next((col for col in preferred_y_columns if col in y_axis_options), y_axis_options[0] if y_axis_options else None)
@@ -1844,7 +1849,6 @@ def main():
                         default_y = allowed_y_axis[0] if allowed_y_axis else (y_axis_options[0] if y_axis_options else None)
                     else:
                         default_y = y_axis_options[0] if y_axis_options else None
-                    
                     if 'x_axis_comparative' not in st.session_state or st.session_state.x_axis_comparative not in x_axis_options:
                         st.session_state.x_axis_comparative = default_x
                     if 'y_axis_comparative' not in st.session_state or st.session_state.y_axis_comparative not in y_axis_options:
@@ -2076,79 +2080,113 @@ def main():
                             fig3.update_layout(width=200, height=120, margin=dict(t=50, b=10), paper_bgcolor="rgba(0,0,0,0)")
                             st.plotly_chart(fig3, use_container_width=False)
                     
-                        # Main plot area
-                        plot_mode = st.radio("Plot Mode", ["Superimposed", "Separate"], horizontal=True, key="comparative_plot_mode")
-                        
-                        fig = go.Figure()
-                        if plot_mode == "Superimposed":
-                            fig.add_trace(go.Scatter(
-                                x=b_filtered[x_axis],
-                                y=b_filtered[y_axis],
-                                mode='lines',
-                                name='Benchmark'
-                            ))
-                            fig.add_trace(go.Scatter(
-                                x=v_filtered[x_axis],
-                                y=v_filtered[y_axis],
-                                mode='lines',
-                                name='Target',
-                                line=dict(color='green')
-                            ))
-                            if not abnormal_points.empty:
-                                fig.add_trace(
-                                    go.Scatter(
-                                        x=abnormal_points['benchmark_x'],
-                                        y=abnormal_points['benchmark'],
-                                        mode='markers',
-                                        marker=dict(color='red', size=8),
-                                        name='Abnormal Points (Benchmark)'
-                                    )
+                    # --- Plotly Chart for Comparative Analysis ---
+                    # Main plot area
+                    plot_mode = st.radio("Plot Mode", ["Superimposed", "Separate"], horizontal=True, key="comparative_plot_mode")
+                    fig = go.Figure()
+                    if plot_mode == "Superimposed":
+                        fig.add_trace(go.Scatter(
+                            x=b_filtered[x_axis],
+                            y=b_filtered[y_axis],
+                            mode='lines',
+                            name='Benchmark'
+                        ))
+                        fig.add_trace(go.Scatter(
+                            x=v_filtered[x_axis],
+                            y=v_filtered[y_axis],
+                            mode='lines',
+                            name='Target',
+                            line=dict(color='green')
+                        ))
+                        if not abnormal_points.empty:
+                            fig.add_trace(
+                                go.Scatter(
+                                    x=abnormal_points['benchmark_x'],
+                                    y=abnormal_points['benchmark'],
+                                    mode='markers',
+                                    marker=dict(color='red', size=8),
+                                    name='Abnormal Points (Benchmark)'
                                 )
-                                fig.add_trace(
-                                    go.Scatter(
-                                        x=abnormal_points['target_x'],
-                                        y=abnormal_points['target'],
-                                        mode='markers',
-                                        marker=dict(color='orange', size=8),
-                                        name='Abnormal Points (Target)'
-                                    )
+                            )
+                            fig.add_trace(
+                                go.Scatter(
+                                    x=abnormal_points['target_x'],
+                                    y=abnormal_points['target'],
+                                    mode='markers',
+                                    marker=dict(color='orange', size=8),
+                                    name='Abnormal Points (Target)'
                                 )
-                        else:  # Separate
-                            fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.08, row_heights=[0.5, 0.5])
-                            fig.add_trace(go.Scatter(
-                                x=b_filtered[x_axis],
-                                y=b_filtered[y_axis],
-                                mode='lines',
-                                name='Benchmark',
-                                line=dict(color='blue')
-                            ), row=1, col=1)
-                            fig.add_trace(go.Scatter(
-                                x=v_filtered[x_axis],
-                                y=v_filtered[y_axis],
-                                mode='lines',
-                                name='Target',
-                                line=dict(color='green')
-                            ), row=2, col=1)
-                            if not abnormal_points.empty:
-                                fig.add_trace(
-                                    go.Scatter(
-                                        x=abnormal_points['benchmark_x'],
-                                        y=abnormal_points['benchmark'],
-                                        mode='markers',
-                                        marker=dict(color='red', size=8),
-                                        name='Abnormal Points (Benchmark)'
-                                    ), row=1, col=1
-                                )
-                                fig.add_trace(
-                                    go.Scatter(
-                                        x=abnormal_points['target_x'],
-                                        y=abnormal_points['target'],
-                                        mode='markers',
-                                        marker=dict(color='orange', size=8),
-                                        name='Abnormal Points (Target)'
-                                    ), row=2, col=1
-                                )
-                        
+                            )
+                        # --- MM:SS formatting for timestamp_seconds ---
+                        if x_axis == "timestamp_seconds":
+                            x_title = "Time (MM:SS)"
+                            tick_vals, tick_texts = get_timestamp_ticks(b_filtered[x_axis])
+                            fig.update_xaxes(
+                                tickvals=tick_vals,
+                                ticktext=tick_texts,
+                                title_text=x_title,
+                                type='linear'
+                            )
+                        else:
+                            x_title = x_axis
+                            fig.update_xaxes(title_text=x_title)
+                    else:  # Separate
+                        fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.08, row_heights=[0.5, 0.5])
+                        fig.add_trace(go.Scatter(
+                            x=b_filtered[x_axis],
+                            y=b_filtered[y_axis],
+                            mode='lines',
+                            name='Benchmark',
+                            line=dict(color='blue')
+                        ), row=1, col=1)
+                        fig.add_trace(go.Scatter(
+                            x=v_filtered[x_axis],
+                            y=v_filtered[y_axis],
+                            mode='lines',
+                            name='Target',
+                            line=dict(color='green')
+                        ), row=2, col=1)
+                        if not abnormal_points.empty:
+                            fig.add_trace(
+                                go.Scatter(
+                                    x=abnormal_points['benchmark_x'],
+                                    y=abnormal_points['benchmark'],
+                                    mode='markers',
+                                    marker=dict(color='red', size=8),
+                                    name='Abnormal Points (Benchmark)'
+                                ), row=1, col=1
+                            )
+                            fig.add_trace(
+                                go.Scatter(
+                                    x=abnormal_points['target_x'],
+                                    y=abnormal_points['target'],
+                                    mode='markers',
+                                    marker=dict(color='orange', size=8),
+                                    name='Abnormal Points (Target)'
+                                ), row=2, col=1
+                            )
+                        # --- MM:SS formatting for timestamp_seconds ---
+                        if x_axis == "timestamp_seconds":
+                            x_title = "Time (MM:SS)"
+                            tick_vals, tick_texts = get_timestamp_ticks(b_filtered[x_axis])
+                            fig.update_xaxes(
+                                tickvals=tick_vals,
+                                ticktext=tick_texts,
+                                title_text=x_title,
+                                type='linear',
+                                row=1, col=1
+                            )
+                            fig.update_xaxes(
+                                tickvals=tick_vals,
+                                ticktext=tick_texts,
+                                title_text=x_title,
+                                type='linear',
+                                row=2, col=1
+                            )
+                        else:
+                            x_title = x_axis
+                            fig.update_xaxes(title_text=x_title, row=1, col=1)
+                            fig.update_xaxes(title_text=x_title, row=2, col=1)
                         fig.update_layout(
                             height=450,
                             showlegend=True,
