@@ -312,10 +312,23 @@ def get_display_name(col):
         return col
 
 def get_numeric_columns(df):
-    """Safely get numeric columns from a DataFrame."""
-    if not isinstance(df, pd.DataFrame):
-        return []
-    return [col for col in df.columns if pd.api.types.is_numeric_dtype(df[col])]
+    """Get numeric columns from dataframe"""
+    return df.select_dtypes(include=[np.number]).columns.tolist()
+
+def is_column_empty(df, col):
+    """Check if a column is empty (all null/NaN values)"""
+    if col not in df.columns:
+        return True
+    return df[col].isna().all() or (df[col] == 0).all() or len(df[col].dropna()) == 0
+
+def get_non_empty_columns(df1, df2, columns):
+    """Get columns that are not empty in both dataframes"""
+    non_empty_cols = []
+    for col in columns:
+        if col in df1.columns and col in df2.columns:
+            if not is_column_empty(df1, col) and not is_column_empty(df2, col):
+                non_empty_cols.append(col)
+    return non_empty_cols
 
 def detect_abnormalities(series, threshold=3.0):
     """Detect abnormal points in a series using z-score threshold."""
@@ -1807,20 +1820,23 @@ def main():
                     # --- Restrict axis selection as in Final.py ---
                     if b_file_ext == ".ulg" and selected_assessment and selected_assessment != "None":
                         allowed_y_axis = ASSESSMENT_Y_AXIS_MAP.get(selected_assessment, [])
-                        # Only keep columns present in both dataframes
-                        allowed_y_axis = [col for col in allowed_y_axis if col in b_df.columns and col in v_df.columns]
+                        # Only keep columns present in both dataframes and not empty
+                        allowed_y_axis = get_non_empty_columns(b_df, v_df, allowed_y_axis)
                         if not allowed_y_axis:
-                            # fallback: all numeric columns present in both
-                            allowed_y_axis = [col for col in b_df.columns if pd.api.types.is_numeric_dtype(b_df[col]) and col in v_df.columns]
+                            # fallback: all numeric columns present in both and not empty
+                            b_numeric = get_numeric_columns(b_df)
+                            v_numeric = get_numeric_columns(v_df)
+                            common_cols = [col for col in b_numeric if col in v_numeric]
+                            allowed_y_axis = get_non_empty_columns(b_df, v_df, common_cols)
                         allowed_x_axis = [col for col in allowed_y_axis if col not in ["Index", "timestamp_seconds"]]
                         x_axis_options = ["Index", "timestamp_seconds"] + allowed_x_axis
                         y_axis_options = allowed_y_axis
                     else:
-                        # CSV or no assessment: all numeric columns present in both
+                        # CSV or no assessment: all numeric columns present in both and not empty
                         b_numeric = get_numeric_columns(b_df)
                         v_numeric = get_numeric_columns(v_df)
                         common_cols = [col for col in b_numeric if col in v_numeric]
-                        y_axis_options = common_cols
+                        y_axis_options = get_non_empty_columns(b_df, v_df, common_cols)
                         allowed_x_axis = [col for col in y_axis_options if col not in ["Index", "timestamp_seconds"]]
                         x_axis_options = ["Index", "timestamp_seconds"] + allowed_x_axis
                     
@@ -1840,9 +1856,9 @@ def main():
                     
                     # Default axis selection
                     if b_file_ext == ".ulg":
-                        default_x = "timestamp_seconds" if "timestamp_seconds" in x_axis_options else ("Index" if "Index" in x_axis_options else x_axis_options[0])
+                        default_x = "timestamp_seconds" if "timestamp_seconds" in x_axis_options else ("Index" if "Index" in x_axis_options else x_axis_options[0] if x_axis_options else None)
                     else:
-                        default_x = "Index" if "Index" in x_axis_options else ("timestamp_seconds" if "timestamp_seconds" in x_axis_options else x_axis_options[0])
+                        default_x = "Index" if "Index" in x_axis_options else ("timestamp_seconds" if "timestamp_seconds" in x_axis_options else x_axis_options[0] if x_axis_options else None)
                     
                     if b_file_ext == ".csv":
                         default_y = y_axis_options[0] if y_axis_options else None
