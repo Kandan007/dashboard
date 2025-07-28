@@ -1813,8 +1813,9 @@ def main():
                         x_axis_options.append('Index')
                     
                     numeric_cols = get_numeric_columns(b_df)
-                    x_axis_options += [col for col in numeric_cols if col not in x_axis_options]
-                    y_axis_options += [col for col in numeric_cols if col not in y_axis_options]
+                    exclude_cols = {"timestamp", "timestamp_sample"}
+                    x_axis_options += [col for col in numeric_cols if col not in x_axis_options and col not in exclude_cols]
+                    y_axis_options += [col for col in numeric_cols if col not in y_axis_options and col not in exclude_cols]
                     
                     # Fallbacks
                     if not x_axis_options:
