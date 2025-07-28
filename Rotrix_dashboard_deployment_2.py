@@ -1974,11 +1974,11 @@ def main():
                                 x_max_default = st.session_state.get("x_max_comparative_mmss", seconds_to_mmss(x_max_val))
                             with x_min_col:
                                 st.markdown("<span style='font-size:0.8rem; color:#666;'>Start (MM:SS)</span>", unsafe_allow_html=True)
-                                x_min_mmss = st.text_input("", value=x_min_default, key="x_min_comparative_mmss", label_visibility="collapsed")
+                                x_min_mmss = st.text_input("", value=x_min_default, key="x_min_comparative_mmss")
                                 x_min = mmss_to_seconds(x_min_mmss) if x_min_mmss else x_min_val
                             with x_max_col:
                                 st.markdown("<span style='font-size:0.8rem; color:#666;'>End (MM:SS)</span>", unsafe_allow_html=True)
-                                x_max_mmss = st.text_input("", value=x_max_default, key="x_max_comparative_mmss", label_visibility="collapsed")
+                                x_max_mmss = st.text_input("", value=x_max_default, key="x_max_comparative_mmss")
                                 x_max = mmss_to_seconds(x_max_mmss) if x_max_mmss else x_max_val
                             with x_reset_col:
                                 st.markdown('<div style="margin-top: 28px;"></div>', unsafe_allow_html=True)
