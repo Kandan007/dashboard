@@ -1985,6 +1985,7 @@ def main():
                                 x_max_mmss = st.text_input("", value=x_max_default, key="x_max_comparative_mmss")
                                 x_max = mmss_to_seconds(x_max_mmss) if x_max_mmss else x_max_val
                             with x_reset_col:
+                                st.markdown('<div style="margin-top: 28px;"></div>', unsafe_allow_html=True)
                                 if st.button("↺", key="reset_x_comparative", help="Reset X-axis range"):
                                     st.session_state['reset_x_comparative_pressed'] = True
                                     st.rerun()
@@ -2003,6 +2004,7 @@ def main():
                                 st.markdown("<span style='font-size:0.8rem; color:#666;'>End</span>", unsafe_allow_html=True)
                                 x_max = st.number_input("End", value=x_max, format="%.2f", key="x_max_comparative", step=1.0, label_visibility="collapsed")
                             with x_reset_col:
+                                st.markdown('<div style="margin-top: 28px;"></div>', unsafe_allow_html=True)
                                 if st.button("↺", key="reset_x_comparative", help="Reset X-axis range"):
                                     st.session_state['reset_x_comparative_flag'] = True
                                     st.rerun()
