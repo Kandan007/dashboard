@@ -1864,20 +1864,66 @@ def main():
                         x_axis_display_cmp = [get_display_name(col) for col in x_axis_options]
                         y_axis_display_cmp = [get_display_name(col) for col in y_axis_options]
                         
-                        current_x_axis = st.session_state.x_axis_comparative
-                        current_y_axis = st.session_state.y_axis_comparative
+                        # Ensure we have valid options
+                        if not x_axis_options or not y_axis_options:
+                            st.error("No valid axis options available. Please check your data files.")
+                            return
+                        
+                        current_x_axis = st.session_state.get('x_axis_comparative', x_axis_options[0] if x_axis_options else None)
+                        current_y_axis = st.session_state.get('y_axis_comparative', y_axis_options[0] if y_axis_options else None)
+                        
+                        # Safe index calculation for X-axis
+                        try:
+                            current_x_display = get_display_name(current_x_axis) if current_x_axis else x_axis_display_cmp[0]
+                            x_index = x_axis_display_cmp.index(current_x_display) if current_x_display in x_axis_display_cmp else 0
+                        except (ValueError, IndexError):
+                            x_index = 0
                         
                         x_axis_selected_display_cmp = st.selectbox(
-                            "X-Axis", x_axis_display_cmp, key="x_axis_comparative",
-                            index=x_axis_display_cmp.index(get_display_name(current_x_axis)) if current_x_axis in x_axis_options else 0
+                            "X-Axis", x_axis_display_cmp, key="x_axis_comparative_display",
+                            index=x_index
                         )
-                        x_axis = x_axis_options[x_axis_display_cmp.index(x_axis_selected_display_cmp)]
+                        
+                        # Safe conversion from display name to actual axis name
+                        try:
+                            x_axis = x_axis_options[x_axis_display_cmp.index(x_axis_selected_display_cmp)]
+                        except (ValueError, IndexError):
+                            x_axis = x_axis_options[0] if x_axis_options else None
+                        
+                        st.session_state['x_axis_comparative'] = x_axis
+                        
+                        # Safe index calculation for Y-axis
+                        try:
+                            current_y_display = get_display_name(current_y_axis) if current_y_axis else y_axis_display_cmp[0]
+                            y_index = y_axis_display_cmp.index(current_y_display) if current_y_display in y_axis_display_cmp else 0
+                        except (ValueError, IndexError):
+                            y_index = 0
                         
                         y_axis_selected_display_cmp = st.selectbox(
-                            "Y-Axis", y_axis_display_cmp, key="y_axis_comparative",
-                            index=y_axis_display_cmp.index(get_display_name(current_y_axis)) if current_y_axis in y_axis_options else 0
+                            "Y-Axis", y_axis_display_cmp, key="y_axis_comparative_display",
+                            index=y_index
                         )
-                        y_axis = y_axis_options[y_axis_display_cmp.index(y_axis_selected_display_cmp)]
+                        
+                        # Safe conversion from display name to actual axis name
+                        try:
+                            y_axis = y_axis_options[y_axis_display_cmp.index(y_axis_selected_display_cmp)]
+                        except (ValueError, IndexError):
+                            y_axis = y_axis_options[0] if y_axis_options else None
+                        
+                        st.session_state['y_axis_comparative'] = y_axis
+                        
+                        # Validate axis selections
+                        if x_axis is None or y_axis is None:
+                            st.error("Invalid axis selection. Please check your data files.")
+                            return
+                        
+                        if x_axis not in b_df.columns or x_axis not in v_df.columns:
+                            st.error(f"X-axis '{x_axis}' not found in one or both datasets.")
+                            return
+                        
+                        if y_axis not in b_df.columns or y_axis not in v_df.columns:
+                            st.error(f"Y-axis '{y_axis}' not found in one or both datasets.")
+                            return
                         
                         z_threshold_col, z_reset_col = st.columns([8, 2])
                         with z_threshold_col:
