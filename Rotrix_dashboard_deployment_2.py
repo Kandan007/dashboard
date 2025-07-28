@@ -2000,10 +2000,10 @@ def main():
                                 x_max = st.session_state.get('x_max_comparative', x_max_val)
                             with x_min_col:
                                 st.markdown("<span style='font-size:0.8rem; color:#666;'>Start</span>", unsafe_allow_html=True)
-                                x_min = st.number_input("Start", value=x_min, format="%.2f", key="x_min_comparative", step=1.0)
+                                x_min = st.number_input("Start", value=x_min, format="%.2f", key="x_min_comparative", step=1.0, label_visibility="collapsed")
                             with x_max_col:
                                 st.markdown("<span style='font-size:0.8rem; color:#666;'>End</span>", unsafe_allow_html=True)
-                                x_max = st.number_input("End", value=x_max, format="%.2f", key="x_max_comparative", step=1.0)
+                                x_max = st.number_input("End", value=x_max, format="%.2f", key="x_max_comparative", step=1.0, label_visibility="collapsed")
                             with x_reset_col:
                                 st.markdown('<div style="margin-top: 28px;"></div>', unsafe_allow_html=True)
                                 if st.button("↺", key="reset_x_comparative", help="Reset X-axis range"):
@@ -2022,9 +2022,9 @@ def main():
                             y_min = st.session_state.get('y_min_comparative', y_min_val)
                             y_max = st.session_state.get('y_max_comparative', y_max_val)
                         with y_min_col:
-                            y_min = st.number_input("Start", value=y_min, format="%.2f", key="y_min_comparative", step=1.0)
+                            y_min = st.number_input("Start", value=y_min, format="%.2f", key="y_min_comparative", step=1.0, label_visibility="collapsed")
                         with y_max_col:
-                            y_max = st.number_input("End", value=y_max, format="%.2f", key="y_max_comparative", step=1.0)
+                            y_max = st.number_input("End", value=y_max, format="%.2f", key="y_max_comparative", step=1.0, label_visibility="collapsed")
                         with y_reset_col:
                             st.markdown('<div style="margin-top: 28px;"></div>', unsafe_allow_html=True)
                             if st.button("↺", key="reset_y_comparative", help="Reset Y-axis range"):
