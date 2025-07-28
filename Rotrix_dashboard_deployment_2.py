@@ -1999,7 +1999,7 @@ def main():
 
                         # X-Axis limits
                         st.markdown(f"<span style='font-size:1.05rem; color:#444; font-weight:500;'>{'Time (MM:SS)' if x_axis == 'timestamp_seconds' else x_axis}</span>", unsafe_allow_html=True)
-                        x_min_col, x_max_col, x_reset_col = st.columns([8, 8, 1])
+                        x_min_col, x_max_col, x_reset_col = st.columns([9, 9, 1])
                         if x_axis == "timestamp_seconds":
                             if st.session_state.get("reset_x_comparative_pressed", False):
                                 x_min_default = seconds_to_mmss(x_min_val)
