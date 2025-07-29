@@ -7,7 +7,6 @@ from sklearn.metrics import mean_squared_error
 import tempfile
 import os
 from datetime import datetime
-import tempfile
 from pyulog import ULog
 import warnings
 warnings.filterwarnings('ignore')
