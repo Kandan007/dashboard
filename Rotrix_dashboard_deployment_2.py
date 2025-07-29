@@ -271,7 +271,6 @@ def ensure_seconds_column(df):
         elif 'Timestamp (hh:mm:ss)' in df.columns:
             df['timestamp_seconds'] = df['Timestamp (hh:mm:ss)'].apply(lambda x: mmss_to_seconds(str(x)))
         else:
-            # Create a simple index-based timestamp
             df['timestamp_seconds'] = range(len(df))
     
     # Check if timestamp_seconds column has valid data (not all NaN)
@@ -1067,14 +1066,9 @@ def main():
             # Tabs for Plot and Data
             tab_plot, tab_data = st.tabs(["📊 Plot", "📋 Data"])
             with tab_plot:
-                # Create main layout with plots on left and parameters on right
                 plot_col, param_col = st.columns([8, 2])
-                
                 with param_col:
-                    # Parameter controls section
                     st.markdown("#### 📝 Parameters")
-                    
-                    # Get actual min/max values for axis limits
                     x_min_actual = 0.0
                     x_max_actual = 100.0
                     
@@ -1239,8 +1233,6 @@ def main():
                                 </div>
                             </div>
                             """, unsafe_allow_html=True)
-                            
-                            # Detailed breakdown
                             st.markdown("**📋 Breakdown by Plot:**")
                             for idx, detail in enumerate(abnormal_details):
                                 severity_color = "#e74c3c" if detail["percentage"] > 5 else "#f39c12" if detail["percentage"] > 2 else "#27ae60"
@@ -1317,7 +1309,6 @@ def main():
                                                             abnormal_df_display['Time'] = abnormal_df_display[x_col].apply(seconds_to_mmss)
                                                             display_cols = ['Time', y_col, 'Z_Score']
                                                             abnormal_df_display = abnormal_df_display[display_cols]
-                                                        
                                                         abnormal_data.append(abnormal_df_display)
                                 
                                         if abnormal_data:
@@ -2158,7 +2149,6 @@ def main():
                             st.plotly_chart(fig3, use_container_width=False)
                     
                         # Main plot area
-                        # --- Plot Visualization heading and Plot Mode selector in one row ---
                         heading_col, mode_col = st.columns([0.7, 0.3])
                         with heading_col:
                             st.markdown("### 🧮 Plot Visualization")
@@ -2176,7 +2166,6 @@ def main():
                                 st.rerun()
                         plot_container = st.container()
                         with plot_container:
-                            # (put the plot code here, using plot_mode as before)
                             if plot_mode == "Superimposed":
                                 fig = go.Figure()
                                 fig.add_trace(go.Scatter(
