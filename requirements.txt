@@ -10,5 +10,4 @@ Pillow
 pyulog
 opencv-python
 moviepy
-open3d
 requests
