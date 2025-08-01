@@ -6,3 +6,9 @@ scikit-learn
 matplotlib
 scipy
 pyulog
+Pillow
+pyulog
+opencv-python
+moviepy
+open3d
+requests
