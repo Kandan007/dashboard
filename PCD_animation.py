@@ -13,7 +13,6 @@ from sklearn.decomposition import PCA
 from io import StringIO, BytesIO
 from PIL import Image
 import base64
-import open3d as o3d
 import tempfile
 import time
 import os
@@ -22,8 +21,16 @@ import importlib.util
 import json
 from datetime import datetime
 import zipfile
+import matplotlib.pyplot as plt
+import matplotlib.cm as cm
+from matplotlib.colors import Normalize
+from moviepy import * # type: ignore
+import logging
 
-
+# Suppress WebSocket errors for Streamlit Cloud
+logging.getLogger('tornado.access').setLevel(logging.ERROR)
+logging.getLogger('tornado.application').setLevel(logging.ERROR)
+logging.getLogger('tornado.general').setLevel(logging.ERROR)
 
 st.set_page_config(page_title="ROTRIX Dashboard", layout="wide")
 
@@ -586,6 +593,198 @@ def create_monitoring_dashboard(df, file_name):
             }
             for key, value in spatial_stats.items():
                 st.write(f"{key}: {value}")
+
+def create_pcd_animation(df, output_path="pcd_animation.mp4", fps=10, frame_duration=0.1):
+    """Create an animation video from PCD data showing laser movement through coordinates"""
+    if df is None or df.empty:
+        st.error("No data available for animation")
+        return None
+    
+    try:
+        # Create temporary directory for frames
+        with tempfile.TemporaryDirectory() as temp_dir:
+            frames = []
+            
+            # Get data bounds
+            x_min, x_max = df['X'].min(), df['X'].max()
+            y_min, y_max = df['Y'].min(), df['Y'].max()
+            
+            # Set temperature range to 650-1000°C as requested
+            temp_min, temp_max = 650, 1000
+            
+            # Create color mapping function for 650-1000°C range
+            def get_color(temp):
+                # Clamp temperature to 650-1000°C range
+                clamped_temp = max(650, min(1000, temp))
+                # Normalize temperature to 0-1 range
+                norm_temp = (clamped_temp - temp_min) / (temp_max - temp_min)
+                # Create color gradient from blue (650°C) to red (1000°C)
+                if norm_temp < 0.5:
+                    # Blue to green (650-825°C)
+                    intensity = norm_temp * 2
+                    return (0, intensity, 1 - intensity)
+                else:
+                    # Green to red (825-1000°C)
+                    intensity = (norm_temp - 0.5) * 2
+                    return (intensity, 1 - intensity, 0)
+            
+            # Create frames - simulate laser movement through points
+            total_points = len(df)
+            points_per_frame = max(1, total_points // (fps * 5))  # 5 seconds of animation
+            
+            for i in range(0, total_points, points_per_frame):
+                plt.figure(figsize=(10, 8))
+                plt.xlim(x_min - (x_max - x_min) * 0.1, x_max + (x_max - x_min) * 0.1)
+                plt.ylim(y_min - (y_max - y_min) * 0.1, y_max + (y_max - y_min) * 0.1)
+                
+                # Plot all points up to current frame
+                current_data = df.iloc[:i + points_per_frame]
+                
+                for idx, row in current_data.iterrows():
+                    x, y, temp = row['X'], row['Y'], row['Temp']
+                    color = get_color(temp)
+                    size = 50 + (temp - temp_min) / (temp_max - temp_min) * 100  # Size based on temperature
+                    
+                    # Highlight the most recent points (laser position)
+                    if idx >= i:
+                        alpha = 0.9
+                        edge_color = 'yellow'
+                        linewidth = 2
+                    else:
+                        alpha = 0.6
+                        edge_color = 'none'
+                        linewidth = 0
+                    
+                    plt.scatter(x, y, s=size, c=[color], alpha=alpha, 
+                              edgecolors=edge_color, linewidth=linewidth)
+                
+                # Add laser trail effect
+                if i > 0:
+                    trail_data = df.iloc[max(0, i-50):i]  # Last 50 points as trail
+                    if len(trail_data) > 0:
+                        plt.plot(trail_data['X'], trail_data['Y'], 'y-', alpha=0.3, linewidth=2)
+                
+                plt.title(f"Laser Movement Through PCD Coordinates\nFrame {i//points_per_frame + 1}")
+                plt.xlabel("X Coordinate")
+                plt.ylabel("Y Coordinate")
+                
+                # Add colorbar
+                sm = plt.cm.ScalarMappable(cmap='RdYlBu_r', 
+                                         norm=Normalize(vmin=temp_min, vmax=temp_max))
+                plt.colorbar(sm, label='Temperature (°C)')
+                
+                # Add progress indicator
+                progress = (i + points_per_frame) / total_points * 100
+                plt.text(0.02, 0.98, f'Progress: {progress:.1f}%', 
+                        transform=plt.gca().transAxes, fontsize=12,
+                        verticalalignment='top', bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+                
+                # Save frame
+                frame_path = os.path.join(temp_dir, f"frame_{i:06d}.png")
+                plt.savefig(frame_path, dpi=150, bbox_inches='tight')
+                frames.append(frame_path)
+                plt.close()
+            
+            # Create video from frames
+            if frames:
+                clip = ImageSequenceClip(frames, fps=fps)
+                clip.write_videofile(output_path, codec="libx264", verbose=False, logger=None)
+                clip.close()
+                
+                st.success(f"✅ Animation created successfully! Saved as: {output_path}")
+                return output_path
+            else:
+                st.error("No frames were created")
+                return None
+                
+    except Exception as e:
+        st.error(f"Error creating animation: {str(e)}")
+        return None
+
+def create_time_based_animation(df, time_column='Index', output_path="pcd_time_animation.mp4", fps=10):
+    """Create animation based on time progression in PCD data"""
+    if df is None or df.empty:
+        st.error("No data available for animation")
+        return None
+    
+    try:
+        # Create temporary directory for frames
+        with tempfile.TemporaryDirectory() as temp_dir:
+            frames = []
+            
+            # Get data bounds
+            x_min, x_max = df['X'].min(), df['X'].max()
+            y_min, y_max = df['Y'].min(), df['Y'].max()
+            
+            # Set temperature range to 650-1000°C as requested
+            temp_min, temp_max = 650, 1000
+            
+            # Create color mapping function for 650-1000°C range
+            def get_color(temp):
+                # Clamp temperature to 650-1000°C range
+                clamped_temp = max(650, min(1000, temp))
+                # Normalize temperature to 0-1 range
+                norm_temp = (clamped_temp - temp_min) / (temp_max - temp_min)
+                # Create color gradient from blue (650°C) to red (1000°C)
+                if norm_temp < 0.5:
+                    # Blue to green (650-825°C)
+                    intensity = norm_temp * 2
+                    return (0, intensity, 1 - intensity)
+                else:
+                    # Green to red (825-1000°C)
+                    intensity = (norm_temp - 0.5) * 2
+                    return (intensity, 1 - intensity, 0)
+            
+            # Group data by time steps
+            time_steps = df[time_column].unique()
+            time_steps = sorted(time_steps, key=lambda x: x)
+            
+            for t in time_steps:
+                plt.figure(figsize=(10, 8))
+                plt.xlim(x_min - (x_max - x_min) * 0.1, x_max + (x_max - x_min) * 0.1)
+                plt.ylim(y_min - (y_max - y_min) * 0.1, y_max + (y_max - y_min) * 0.1)
+                
+                # Get data for current time step
+                current_data = df[df[time_column] == t]
+                
+                for idx, row in current_data.iterrows():
+                    x, y, temp = row['X'], row['Y'], row['Temp']
+                    
+                    # Color mapping based on 650-1000°C temperature range
+                    color = get_color(temp)
+                    size = 50 + (max(650, min(1000, temp)) - temp_min) / (temp_max - temp_min) * 100
+                    plt.scatter(x, y, s=size, c=[color], alpha=0.8)
+                
+                plt.title(f"PCD Data at Time Step {t}")
+                plt.xlabel("X Coordinate")
+                plt.ylabel("Y Coordinate")
+                
+                # Add colorbar
+                sm = plt.cm.ScalarMappable(cmap='RdYlBu_r', 
+                                         norm=Normalize(vmin=temp_min, vmax=temp_max))
+                plt.colorbar(sm, label='Temperature (°C)')
+                
+                # Save frame
+                frame_path = os.path.join(temp_dir, f"frame_{t:06d}.png")
+                plt.savefig(frame_path, dpi=150, bbox_inches='tight')
+                frames.append(frame_path)
+                plt.close()
+            
+            # Create video from frames
+            if frames:
+                clip = ImageSequenceClip(frames, fps=fps)
+                clip.write_videofile(output_path, codec="libx264", verbose=False, logger=None)
+                clip.close()
+                
+                st.success(f"✅ Time-based animation created successfully! Saved as: {output_path}")
+                return output_path
+            else:
+                st.error("No frames were created")
+                return None
+                
+    except Exception as e:
+        st.error(f"Error creating time-based animation: {str(e)}")
+        return None
 
 def load_pcd(file):
     """Load PCD file and return DataFrame"""
@@ -1258,7 +1457,7 @@ if st.session_state.current_page == 'home':
                             st.warning("Could not load or parse the selected PCD file.")
                 
                 # New tabs for advanced features
-                tab_analytics, tab_export, tab_filter, tab_monitor = st.tabs(["📊 Analytics", "💾 Export", "🔍 Filter", "📈 Monitor"])
+                tab_analytics, tab_export, tab_filter, tab_monitor, tab_animation = st.tabs(["📊 Analytics", "💾 Export", "🔍 Filter", "📈 Monitor", "🎬 Animation"])
                 
                 with tab_analytics:
                     file_obj = next((f for f in st.session_state.uploaded_files if f.name == selected_file), None)
@@ -1465,6 +1664,83 @@ if st.session_state.current_page == 'home':
                             # Auto-refresh option
                             if st.button("�� Refresh Data", key="refresh_monitor"):
                                 st.rerun()
+                        else:
+                            st.warning("Could not load or parse the selected PCD file.")
+                
+                with tab_animation:
+                    file_obj = next((f for f in st.session_state.uploaded_files if f.name == selected_file), None)
+                    if file_obj:
+                        df, _ = load_data(file_obj, ".pcd", "animation")
+                        if df is not None and not df.empty:
+                            st.markdown("### 🎬 PCD Animation Creator")
+                            st.markdown("Create animation videos showing laser movement through PCD coordinates with temperature visualization.")
+                            
+                            # Animation settings
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                animation_type = st.selectbox(
+                                    "Animation Type",
+                                    ["Laser Movement", "Time-based"],
+                                    key="animation_type"
+                                )
+                                fps = st.slider("FPS (Frames Per Second)", 5, 30, 10, key="animation_fps")
+                            
+                            with col2:
+                                output_filename = st.text_input(
+                                    "Output Filename",
+                                    value=f"{selected_file.replace('.pcd', '')}_animation.mp4",
+                                    key="animation_filename"
+                                )
+                            
+                            # Animation preview
+                            st.markdown("### 📊 Animation Preview")
+                            preview_col1, preview_col2 = st.columns(2)
+                            
+                            with preview_col1:
+                                st.markdown("**Data Summary**")
+                                st.write(f"Total Points: {len(df)}")
+                                st.write(f"X Range: {df['X'].min():.2f} to {df['X'].max():.2f}")
+                                st.write(f"Y Range: {df['Y'].min():.2f} to {df['Y'].max():.2f}")
+                                if 'Temp' in df.columns:
+                                    st.write(f"Temperature Range: 650°C to 1000°C (Fixed)")
+                                    st.write(f"Data Temp Range: {df['Temp'].min():.2f} to {df['Temp'].max():.2f}")
+                            
+                            with preview_col2:
+                                st.markdown("**Animation Settings**")
+                                st.write(f"Type: {animation_type}")
+                                st.write(f"FPS: {fps}")
+                                st.write(f"Duration: ~{len(df) // (fps * 5):.1f} seconds")
+                            
+                            # Create animation button
+                            if st.button("🎬 Create Animation", key="create_animation_btn", use_container_width=True):
+                                with st.spinner("Creating animation... This may take a few minutes."):
+                                    try:
+                                        if animation_type == "Laser Movement":
+                                            video_path = create_pcd_animation(df, output_filename, fps)
+                                        else:
+                                            video_path = create_time_based_animation(df, 'Index', output_filename, fps)
+                                        
+                                        if video_path and os.path.exists(video_path):
+                                            st.success("✅ Animation created successfully!")
+                                            
+                                            # Display video
+                                            st.markdown("### 🎥 Generated Animation")
+                                            with open(video_path, "rb") as video_file:
+                                                video_bytes = video_file.read()
+                                            
+                                            st.video(video_bytes)
+                                            
+                                            # Download button
+                                            st.download_button(
+                                                label="📥 Download Animation",
+                                                data=video_bytes,
+                                                file_name=output_filename,
+                                                mime="video/mp4"
+                                            )
+                                        else:
+                                            st.error("❌ Failed to create animation")
+                                    except Exception as e:
+                                        st.error(f"❌ Error creating animation: {str(e)}")
                         else:
                             st.warning("Could not load or parse the selected PCD file.")
     elif st.session_state.analysis_type == "Frame-by-Frame Video":
